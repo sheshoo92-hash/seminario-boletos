@@ -1,0 +1,9 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "node server.js"
+restartPolicyType = "on_failure"
+
+[[mounts]]
+mountPath = "/data"

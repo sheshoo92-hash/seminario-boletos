@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paquete Grupo — Boletos</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.ticket-card {
+  border:2px solid #d8c5ff; border-radius:14px; padding:16px;
+  margin-bottom:16px; background:#faf8ff;
+}
+.ticket-card h3 { margin:0 0 4px; color:#7c3aed; font-size:1rem; }
+.ticket-card .nombre { font-size:1.1rem; font-weight:700; color:#1c3a6e; margin:4px 0; }
+.ticket-card .linea { font-size:0.82rem; color:#666; }
+.ticket-card img.qr { display:block; width:150px; height:150px; margin:12px auto 0; border-radius:8px; border:2px solid #ddd; }
+.ticket-card a.btn-boleto {
+  display:block; text-align:center; margin-top:10px;
+  background:#7c3aed; color:#fff; border-radius:8px; padding:8px;
+  font-weight:700; text-decoration:none; font-size:0.9rem;
+}
+.ticket-card a.btn-boleto:hover { background:#5b21b6; }
+.paquete-banner {
+  background:#f5f0ff; border:2px solid #d8c5ff; border-radius:12px;
+  padding:14px 16px; text-align:center; margin-bottom:20px;
+}
+.paquete-banner h2 { margin:0 0 4px; color:#7c3aed; }
+.paquete-banner p { margin:0; color:#666; font-size:0.9rem; }
+.status-pending { color:#c07000; font-weight:700; margin-top:12px; text-align:center; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="paquete-banner">
+    <h2>🎟 Paquete Grupo</h2>
+    <p id="eventName">Cargando...</p>
+  </div>
+
+  <div id="statusMsg"></div>
+  <div id="tickets"></div>
+</div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const paqueteId = params.get('id');
+const status = params.get('status');
+
+if (!paqueteId) {
+  document.getElementById('tickets').innerHTML = '<p class="error" style="display:block">Paquete no encontrado.</p>';
+} else {
+  // Si viene de MP con status=pending, esperar y reintentar
+  let intentos = 0;
+  async function cargar() {
+    const res = await fetch(`/api/paquete/${paqueteId}`);
+    if (!res.ok) {
+      document.getElementById('tickets').innerHTML = '<p class="error" style="display:block">No se encontraron los boletos. Intenta más tarde.</p>';
+      return;
+    }
+    const data = await res.json();
+    document.getElementById('eventName').textContent = data.eventName + (data.eventDate ? ' — ' + data.eventDate : '');
+
+    const allPaid = data.attendees.every(a => a.payment_status === 'pagado');
+
+    if (!allPaid && intentos < 5) {
+      intentos++;
+      document.getElementById('statusMsg').innerHTML = '<p class="status-pending">⏳ Verificando pago... (intento ' + intentos + '/5)</p>';
+      setTimeout(cargar, 3000);
+      return;
+    }
+
+    document.getElementById('statusMsg').innerHTML = allPaid
+      ? '<p style="color:#0a8f5b; font-weight:700; text-align:center; margin-bottom:16px;">✅ Pago confirmado — 4 boletos generados</p>'
+      : '<p class="status-pending">⚠ Pago pendiente. Si ya pagaste, recarga en unos segundos.</p>';
+
+    const container = document.getElementById('tickets');
+    container.innerHTML = '';
+    data.attendees.forEach((att, i) => {
+      const div = document.createElement('div');
+      div.className = 'ticket-card';
+      div.innerHTML = `
+        <h3>Boleto ${i + 1} de 4 — #${att.ticket_number || ''}</h3>
+        <p class="nombre">${att.full_name}</p>
+        <p class="linea">Platino: ${att.platino || '—'} · Esmeralda: ${att.esmeralda || '—'} · Diamante: ${att.diamante || '—'}</p>
+        ${att.early_bird ? '<p style="color:#c07000; font-weight:700; font-size:0.85rem; margin-top:4px;">🎉 Early Bird — acceso Ticket Holder incluido</p>' : ''}
+        ${att.qr ? `<img src="${att.qr}" class="qr" alt="QR">` : '<p style="text-align:center; color:#999; font-size:0.85rem; margin-top:10px;">QR disponible al confirmar pago</p>'}
+        ${att.payment_status === 'pagado' ? `<a class="btn-boleto" href="/ticket.html?code=${att.ticket_code}">Ver boleto completo →</a>` : ''}
+      `;
+      container.appendChild(div);
+    });
+  }
+  cargar();
+}
+</script>
+</body>
+</html>

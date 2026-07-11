@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Escáner de Entrada</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<style>
+.doc-img { max-width:100%; border-radius:10px; margin-top:10px; border:2px solid #ddd; }
+.attendee-card { text-align:left; margin-top:10px; font-size:0.9rem; line-height:1.6; }
+.search-result-item {
+  padding:10px; border:1px solid #ddd; border-radius:8px; margin-bottom:8px;
+  cursor:pointer; background:#fafafa;
+}
+.search-result-item:hover { background:#e6f0ff; }
+.search-result-item strong { color:#1c3a6e; }
+.modo-banner {
+  text-align:center; padding:8px 12px; border-radius:8px; font-weight:700;
+  font-size:0.85rem; margin-bottom:12px;
+}
+.banner-evento { background:#e6f0ff; color:#1c3a6e; }
+</style>
+</head>
+<body>
+<div class="card" style="max-width:480px;">
+  <h1>Control de Entrada</h1>
+  <div class="modo-banner banner-evento">🎪 Día del Evento — acepta todos los boletos pagados</div>
+
+  <div id="reader" style="margin-top:14px;"></div>
+  <div id="resultado" style="margin-top:14px; text-align:center;"></div>
+  <p class="muted" style="text-align:center; margin-top:10px;">Apunta la cámara al código QR del boleto</p>
+
+  <div style="margin-top:20px; border-top:1px solid #eee; padding-top:16px;">
+    <label>¿No encuentra su boleto QR? Búscalo por nombre</label>
+    <input type="text" id="searchInput" placeholder="Escribe el nombre del asistente" oninput="buscarPorNombre()">
+    <div id="searchResults" style="margin-top:8px;"></div>
+  </div>
+</div>
+
+<script>
+const MODO = 'evento'; // MODO FIJO: día del evento
+let scanning = true;
+
+window.addEventListener('load', startScanner);
+
+function startScanner() {
+  const html5QrCode = new Html5Qrcode("reader");
+  html5QrCode.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: 250 },
+    async (decodedText) => {
+      if (!scanning) return;
+      scanning = false;
+      await checkin(decodedText);
+      setTimeout(() => { scanning = true; }, 8000);
+    },
+    () => {}
+  ).catch(err => {
+    document.getElementById('resultado').innerHTML =
+      '<p class="error" style="display:block">No se pudo acceder a la cámara: ' + err + '</p>';
+  });
+}
+
+async function checkin(code) {
+  const res = await fetch('/api/checkin', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ticket_code: code, modo: MODO })
+  });
+  const data = await res.json();
+  mostrarResultado(data, code);
+}
+
+function beepOK() {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  [700, 900].forEach((freq, i) => {
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value = freq;
+    o.type = 'sine';
+    g.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.12);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.15);
+    o.start(ctx.currentTime + i * 0.12);
+    o.stop(ctx.currentTime + i * 0.12 + 0.15);
+  });
+}
+function beepError() {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.connect(g); g.connect(ctx.destination);
+  o.frequency.value = 280;
+  o.type = 'sawtooth';
+  g.gain.setValueAtTime(0.4, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+  o.start(ctx.currentTime);
+  o.stop(ctx.currentTime + 0.5);
+}
+
+function mostrarResultado(data, code) {
+  const el = document.getElementById('resultado');
+  if (data.ok) {
+    beepOK();
+    const att = data.attendee;
+    el.innerHTML = resultadoHTML('status-ok', '✔ ACCESO PERMITIDO', att);
+  } else if (data.reason === 'ya_usado') {
+    beepError();
+    el.innerHTML = resultadoHTML('status-warn', '⚠ BOLETO YA USADO', data.attendee);
+  } else if (data.reason === 'no_pagado') {
+    beepError();
+    el.innerHTML = resultadoHTML('status-bad', '✖ PAGO PENDIENTE', data.attendee);
+  } else {
+    beepError();
+    el.innerHTML = `<div class="status-pill status-bad">✖ BOLETO NO VÁLIDO</div>
+      <p class="muted" style="font-size:0.75rem; word-break:break-all; margin-top:6px;">Código: "${code}"</p>`;
+  }
+}
+
+const tipoLabel = { empresario: 'Empresario', nuevo_empresario: 'Nuevo Empresario', invitado: 'Invitado' };
+
+function resultadoHTML(pillClass, titulo, att) {
+  if (!att) return `<div class="status-pill ${pillClass}">${titulo}</div>`;
+  let html = `<div class="status-pill ${pillClass}">${titulo}</div>`;
+  html += `<div class="attendee-card">`;
+  html += `<strong>${att.full_name}</strong><br>`;
+  html += `Tipo: ${tipoLabel[att.ticket_type] || att.ticket_type || 'Empresario'}<br>`;
+  if (att.early_bird) html += `<span style="color:#c07000; font-weight:700;">Early Bird 🎉</span><br>`;
+  if (att.auspicio_numero) html += `N° Empresario: ${att.auspicio_numero}<br>`;
+  if (att.checked_in_count > 0) html += `Entrada: ${att.checked_in_at || ''}<br>`;
+  html += `</div>`;
+  if (att.ine_url) {
+    html += `<p class="muted" style="margin-top:8px; font-weight:700;">📋 INE del invitado:</p>`;
+    html += `<img src="${att.ine_url}" class="doc-img" alt="INE del invitado">`;
+  }
+  if (att.comprobante_url) {
+    html += `<p class="muted" style="margin-top:8px; font-weight:700;">📋 Comprobante de auspicio:</p>`;
+    html += `<img src="${att.comprobante_url}" class="doc-img" alt="Comprobante de auspicio">`;
+  }
+  return html;
+}
+
+let searchTimer = null;
+async function buscarPorNombre() {
+  const q = document.getElementById('searchInput').value.trim();
+  const resultsEl = document.getElementById('searchResults');
+  if (q.length < 2) { resultsEl.innerHTML = ''; return; }
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(async () => {
+    const res = await fetch('/api/scanner/search?q=' + encodeURIComponent(q));
+    const results = await res.json();
+    if (results.length === 0) {
+      resultsEl.innerHTML = '<p class="muted">No se encontraron resultados.</p>';
+      return;
+    }
+    resultsEl.innerHTML = results.map(r => `
+      <div class="search-result-item" onclick="checkinManual('${r.ticket_code}')">
+        <strong>${r.full_name}</strong> — ${tipoLabel[r.ticket_type] || 'Empresario'}
+        ${r.early_bird ? ' 🎉' : ''}
+      </div>
+    `).join('');
+  }, 300);
+}
+
+async function checkinManual(ticket_code) {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchResults').innerHTML = '';
+  document.getElementById('resultado').innerHTML = '<p class="muted">Procesando...</p>';
+  await checkin(ticket_code);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registro - Seminario</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.type-grid { display:flex; flex-direction:column; gap:10px; margin-top:10px; }
+.type-card {
+  border:2px solid #ddd; border-radius:12px; padding:14px 16px;
+  cursor:pointer; transition:all 0.15s; background:#fafafa;
+}
+.type-card:hover { border-color:#1c3a6e; background:#f0f4ff; }
+.type-card.selected { border-color:#1c3a6e; background:#e6f0ff; }
+.type-card.paquete-card.selected { border-color:#7c3aed; background:#f5f0ff; }
+.type-card h3 { margin:0 0 4px; font-size:1rem; color:#1c3a6e; }
+.type-card.paquete-card h3 { color:#7c3aed; }
+.type-card p  { margin:0; font-size:0.82rem; color:#666; }
+.type-card .precio-badge {
+  display:inline-block; margin-top:6px; background:#1c3a6e; color:#fff;
+  border-radius:20px; padding:3px 10px; font-size:0.82rem; font-weight:700;
+}
+.type-card .precio-badge.gratis { background:#0a8f5b; }
+.type-card .precio-badge.paquete { background:#7c3aed; }
+.upload-preview { margin-top:8px; max-width:100%; border-radius:8px; display:none; max-height:160px; object-fit:cover; }
+
+/* Paquete: bloque de persona */
+.persona-bloque {
+  border:1px solid #d8c5ff; border-radius:10px; padding:12px 14px;
+  margin-bottom:10px; background:#faf8ff;
+}
+.persona-bloque .persona-label {
+  font-weight:700; color:#7c3aed; margin:0 0 8px; font-size:0.9rem;
+}
+.persona-bloque input {
+  margin-bottom:8px;
+}
+</style>
+</head>
+<body>
+<div class="card">
+  <img id="flyer" src="" alt="Flyer del evento" style="display:none; width:100%; border-radius:12px; margin-bottom:14px;">
+  <h1 id="eventTitle">Seminario</h1>
+  <p class="subtitle" id="eventDate" style="display:none;"></p>
+  <p class="subtitle">Llena tus datos para generar tu boleto digital</p>
+
+  <form id="form" enctype="multipart/form-data">
+
+    <!-- Paso 1: tipo de boleto -->
+    <label>Tipo de boleto</label>
+    <div class="type-grid" id="typeGrid">
+      <div class="type-card selected" data-type="empresario">
+        <h3>Boleto de Empresario</h3>
+        <p>Acceso general al seminario</p>
+        <span class="precio-badge" id="precioEmpresario">$450</span>
+      </div>
+      <div class="type-card paquete-card" data-type="paquete_grupo">
+        <h3>🎟 Paquete Grupo — 4 boletos</h3>
+        <p>4 personas al precio especial de grupo</p>
+        <span class="precio-badge paquete" id="precioPaquete">$1,400</span>
+      </div>
+      <div class="type-card" data-type="nuevo_empresario">
+        <h3>Boleto de Nuevo Empresario</h3>
+        <p>Menos de 2 meses de auspicio — primeros 2 eventos <strong>gratis</strong></p>
+        <p style="font-size:0.78rem; color:#a86a00; margin-top:4px;">⚠ Obligatorio subir comprobante de tu fecha de registro</p>
+        <span class="precio-badge gratis">GRATIS</span>
+      </div>
+      <div class="type-card" data-type="invitado">
+        <h3>Acceso de Invitado</h3>
+        <p>Solo puedes ingresar como invitado una vez</p>
+        <p style="font-size:0.78rem; color:#a86a00; margin-top:4px;">⚠ Obligatorio subir foto de tu INE</p>
+        <span class="precio-badge gratis">GRATIS</span>
+      </div>
+    </div>
+    <input type="hidden" id="ticket_type" name="ticket_type" value="empresario">
+
+    <!-- Datos personales (boleto individual) -->
+    <div id="individualFields">
+      <label for="full_name" style="margin-top:18px;">Nombre completo</label>
+      <input type="text" id="full_name" name="full_name" placeholder="Ej. Juan Pérez García">
+
+      <label for="platino">¿Quién es tu Platino? <span style="color:#c0392b;">*</span></label>
+      <input type="text" id="platino" name="platino" placeholder="Nombre de tu Platino">
+
+      <label for="esmeralda">¿Quién es tu Esmeralda? <span style="color:#c0392b;">*</span></label>
+      <input type="text" id="esmeralda" name="esmeralda" placeholder="Nombre de tu Esmeralda">
+
+      <label for="diamante">¿Quién es tu Diamante? <span style="color:#c0392b;">*</span></label>
+      <input type="text" id="diamante" name="diamante" placeholder="Nombre de tu Diamante">
+
+      <!-- Campos para Nuevo Empresario -->
+      <div id="nuevoEmpresarioFields" style="display:none;">
+        <label for="auspicio_numero">Número de empresario (ID Amway)</label>
+        <input type="text" id="auspicio_numero" name="auspicio_numero" placeholder="Ej. 123456789">
+
+        <label for="fecha_auspicio">Fecha en que te registraste como empresario</label>
+        <input type="date" id="fecha_auspicio" name="fecha_auspicio">
+
+        <label for="comprobante">Sube captura de pantalla de tu fecha de auspicio</label>
+        <input type="file" id="comprobante" name="comprobante" accept="image/*" capture="environment">
+        <img id="comprobantePreview" class="upload-preview" alt="Vista previa comprobante">
+      </div>
+
+      <!-- Campos para Invitado -->
+      <div id="invitadoFields" style="display:none;">
+        <label for="ine_photo">Sube foto de tu INE (credencial de elector)</label>
+        <input type="file" id="ine_photo" name="ine_photo" accept="image/*" capture="environment">
+        <img id="inePreview" class="upload-preview" alt="Vista previa INE">
+      </div>
+    </div>
+
+    <!-- Campos paquete grupo (4 personas) -->
+    <div id="paqueteFields" style="display:none; margin-top:16px;">
+      <p style="color:#7c3aed; font-weight:700; margin-bottom:10px;">Datos de las 4 personas del grupo:</p>
+      <div id="personasContainer"></div>
+    </div>
+
+    <p class="precio-info" id="precioInfo"></p>
+    <p id="formHint" style="display:none; color:#c07000; font-size:0.85rem; margin-top:6px;"></p>
+
+    <button type="submit" class="primary" id="btnSubmit" disabled>Continuar al pago</button>
+    <p class="error" id="errorMsg"></p>
+  </form>
+</div>
+
+<script>
+let cfg = {};
+
+fetch('/api/config').then(r => r.json()).then(data => {
+  cfg = data;
+  document.getElementById('eventTitle').textContent = cfg.eventName;
+  if (cfg.eventDate) {
+    const d = document.getElementById('eventDate');
+    d.textContent = cfg.eventDate;
+    d.style.display = 'block';
+  }
+  if (cfg.flyer) {
+    const img = document.getElementById('flyer');
+    img.src = cfg.flyer;
+    img.style.display = 'block';
+  }
+  updatePrecioDisplay();
+  buildPersonasForm();
+});
+
+// ---- Construye los 4 bloques de persona para el paquete ----
+function buildPersonasForm() {
+  const container = document.getElementById('personasContainer');
+  container.innerHTML = '';
+  for (let i = 1; i <= 4; i++) {
+    const div = document.createElement('div');
+    div.className = 'persona-bloque';
+    div.innerHTML = `
+      <p class="persona-label">👤 Persona ${i}</p>
+      <input type="text" class="p-name" placeholder="Nombre completo (nombre y apellido)" oninput="checkValid()">
+      <input type="text" class="p-platino" placeholder="Platino" oninput="checkValid()">
+      <input type="text" class="p-esmeralda" placeholder="Esmeralda" oninput="checkValid()">
+      <input type="text" class="p-diamante" placeholder="Diamante" oninput="checkValid()">
+    `;
+    container.appendChild(div);
+  }
+}
+
+function updatePrecioDisplay() {
+  const type = document.getElementById('ticket_type').value;
+  let label = '';
+  const btn = document.getElementById('btnSubmit');
+
+  if (type === 'nuevo_empresario' || type === 'invitado') {
+    label = 'Acceso gratuito ✓';
+    btn.textContent = 'Obtener boleto';
+  } else if (type === 'paquete_grupo') {
+    const pp = cfg.precio_paquete || 1400;
+    label = `Paquete Grupo: $${pp.toLocaleString()} total 🎟`;
+    btn.textContent = 'Continuar al pago — Paquete Grupo';
+    document.getElementById('precioPaquete').textContent = `$${pp.toLocaleString()}`;
+  } else {
+    const precio = cfg.precio || 450;
+    if (cfg.early_bird_active) {
+      label = 'Precio especial (early bird): $' + cfg.early_bird_precio + ' 🎉';
+    } else {
+      label = 'Costo del boleto: $' + precio;
+    }
+    btn.textContent = 'Continuar al pago';
+  }
+  document.getElementById('precioInfo').textContent = label;
+  document.getElementById('precioEmpresario').textContent = cfg.early_bird_active ? '$' + cfg.early_bird_precio + ' 🎉' : '$' + (cfg.precio || 450);
+}
+
+// Selección de tipo
+document.getElementById('typeGrid').addEventListener('click', e => {
+  const card = e.target.closest('.type-card');
+  if (!card) return;
+  document.querySelectorAll('.type-card').forEach(c => c.classList.remove('selected'));
+  card.classList.add('selected');
+  const type = card.dataset.type;
+  document.getElementById('ticket_type').value = type;
+
+  const isPaquete = type === 'paquete_grupo';
+  document.getElementById('individualFields').style.display = isPaquete ? 'none' : 'block';
+  document.getElementById('paqueteFields').style.display = isPaquete ? 'block' : 'none';
+  document.getElementById('nuevoEmpresarioFields').style.display = type === 'nuevo_empresario' ? 'block' : 'none';
+  document.getElementById('invitadoFields').style.display = type === 'invitado' ? 'block' : 'none';
+
+  updatePrecioDisplay();
+  checkValid();
+});
+
+// Preview de imágenes
+function setupPreview(inputId, previewId) {
+  document.getElementById(inputId).addEventListener('change', function() {
+    const prev = document.getElementById(previewId);
+    if (this.files && this.files[0]) {
+      const reader = new FileReader();
+      reader.onload = e => { prev.src = e.target.result; prev.style.display = 'block'; };
+      reader.readAsDataURL(this.files[0]);
+    }
+  });
+}
+setupPreview('comprobante', 'comprobantePreview');
+setupPreview('ine_photo', 'inePreview');
+
+['full_name','platino','esmeralda','diamante','auspicio_numero'].forEach(id =>
+  document.getElementById(id).addEventListener('input', checkValid)
+);
+document.getElementById('comprobante').addEventListener('change', checkValid);
+document.getElementById('ine_photo').addEventListener('change', checkValid);
+
+function checkValid() {
+  const type = document.getElementById('ticket_type').value;
+  const btn = document.getElementById('btnSubmit');
+  const hint = document.getElementById('formHint');
+  const pendientes = [];
+
+  if (type === 'paquete_grupo') {
+    const bloques = document.querySelectorAll('.persona-bloque');
+    bloques.forEach((b, i) => {
+      const name = b.querySelector('.p-name').value.trim();
+      const platino = b.querySelector('.p-platino').value.trim();
+      const esmeralda = b.querySelector('.p-esmeralda').value.trim();
+      const diamante = b.querySelector('.p-diamante').value.trim();
+      if (name.split(/\s+/).length < 2 || name.length <= 3) pendientes.push(`Persona ${i+1}: nombre completo`);
+      if (platino.length < 2) pendientes.push(`Persona ${i+1}: Platino`);
+      if (esmeralda.length < 2) pendientes.push(`Persona ${i+1}: Esmeralda`);
+      if (diamante.length < 2) pendientes.push(`Persona ${i+1}: Diamante`);
+    });
+  } else {
+    const name     = document.getElementById('full_name').value.trim();
+    const platino  = document.getElementById('platino').value.trim();
+    const esmeralda= document.getElementById('esmeralda').value.trim();
+    const diamante = document.getElementById('diamante').value.trim();
+    if (name.split(/\s+/).length < 2 || name.length <= 4) pendientes.push('Nombre completo (nombre y apellido)');
+    if (platino.length <= 1)   pendientes.push('Platino');
+    if (esmeralda.length <= 1) pendientes.push('Esmeralda');
+    if (diamante.length <= 1)  pendientes.push('Diamante');
+    if (type === 'nuevo_empresario') {
+      if (document.getElementById('auspicio_numero').value.trim().length <= 2) pendientes.push('Número de empresario');
+      if (document.getElementById('comprobante').files.length === 0) pendientes.push('Comprobante de auspicio');
+    }
+    if (type === 'invitado') {
+      if (document.getElementById('ine_photo').files.length === 0) pendientes.push('Foto de INE');
+    }
+  }
+
+  if (pendientes.length === 0) {
+    btn.disabled = false;
+    hint.style.display = 'none';
+  } else {
+    btn.disabled = true;
+    hint.textContent = 'Falta: ' + pendientes.join(', ');
+    hint.style.display = 'block';
+  }
+}
+
+document.getElementById('form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = document.getElementById('btnSubmit');
+  const err = document.getElementById('errorMsg');
+  err.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = 'Procesando...';
+
+  try {
+    const freshCfg = await fetch('/api/config').then(r => r.json());
+    cfg = freshCfg;
+    updatePrecioDisplay();
+
+    const type = document.getElementById('ticket_type').value;
+
+    if (type === 'paquete_grupo') {
+      // Recopilar datos de las 4 personas
+      const personas = [];
+      document.querySelectorAll('.persona-bloque').forEach(b => {
+        personas.push({
+          full_name: b.querySelector('.p-name').value.trim(),
+          platino:   b.querySelector('.p-platino').value.trim(),
+          esmeralda: b.querySelector('.p-esmeralda').value.trim(),
+          diamante:  b.querySelector('.p-diamante').value.trim(),
+        });
+      });
+      const res = await fetch('/api/register-paquete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ personas }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al registrar');
+      window.location.href = data.redirect || (data.init_point ? data.init_point : `/paquete.html?id=${data.paquete_id}`);
+    } else {
+      // Registro individual normal
+      const fd = new FormData(document.getElementById('form'));
+      const res = await fetch('/api/register', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al registrar');
+      if (data.demo || data.redirect) {
+        window.location.href = data.redirect || `/ticket.html?code=${data.ticket_code}`;
+      } else if (data.init_point) {
+        window.location.href = data.init_point;
+      } else {
+        throw new Error('No se pudo generar el link de pago');
+      }
+    }
+  } catch (ex) {
+    err.textContent = ex.message;
+    err.style.display = 'block';
+    btn.disabled = false;
+    updatePrecioDisplay();
+  }
+});
+</script>
+</body>
+</html>

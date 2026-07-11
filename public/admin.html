@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin - Seminario</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="card wide">
+  <h1>Panel de Administración</h1>
+
+  <!-- ===== Configuración del evento ===== -->
+  <div class="top-actions" style="margin-top:0;">
+    <h2 style="font-size:1.05rem; margin:0;">Configuración del evento</h2>
+  </div>
+  <div id="flyerPreviewBox" style="display:none; margin-bottom:10px;">
+    <img id="flyerPreview" src="" alt="Flyer actual" style="max-width:220px; border-radius:8px; display:block;">
+  </div>
+  <label for="cfgEventName">Nombre del seminario</label>
+  <input type="text" id="cfgEventName" placeholder="Ej. Seminario Amway - Julio">
+
+  <label for="cfgEventDate">Fecha del evento (texto libre)</label>
+  <input type="text" id="cfgEventDate" placeholder="Ej. Sábado 5 de julio, 4:00 pm">
+
+  <label for="cfgPrecio">Precio normal del boleto (MXN)</label>
+  <input type="text" id="cfgPrecio" placeholder="Ej. 450">
+
+  <div style="border:2px solid #1c3a6e; border-radius:10px; padding:14px; margin-top:14px;">
+    <label style="margin:0; color:#1c3a6e; font-size:1rem;">🎉 Modo Early Bird (precio especial)</label>
+    <p class="muted" style="margin:4px 0 10px;">Activa esto durante el evento actual para que los boletos del próximo evento cuesten el precio especial.</p>
+    <label for="cfgEarlyBirdPrecio">Precio early bird (MXN)</label>
+    <input type="text" id="cfgEarlyBirdPrecio" placeholder="Ej. 400">
+    <div style="display:flex; align-items:center; gap:10px; margin-top:12px;">
+      <input type="checkbox" id="cfgEarlyBirdActive" style="width:auto; width:20px; height:20px;">
+      <label for="cfgEarlyBirdActive" style="margin:0; cursor:pointer;">Early Bird <strong>ACTIVO</strong> — boletos al precio especial</label>
+    </div>
+  </div>
+
+  <label for="cfgComision" style="margin-top:14px;">Comisión Mercado Pago (%) — para el reporte</label>
+  <input type="text" id="cfgComision" placeholder="Ej. 3.49">
+
+  <label for="cfgFlyer" style="margin-top:14px;">Imagen / flyer del evento</label>
+  <input type="file" id="cfgFlyer" accept="image/*">
+
+  <button class="primary" onclick="guardarConfig()">Guardar configuración</button>
+  <p class="muted" id="cfgMsg" style="text-align:center; margin-top:8px;"></p>
+
+  <!-- ===== Asistentes ===== -->
+  <div class="top-actions">
+    <h2 style="font-size:1.05rem; margin:0;">Asistentes</h2>
+    <div>
+      <span class="muted" id="resumen"></span>
+      <button class="primary" style="width:auto; padding:8px 14px; margin-left:10px;" onclick="cargarLista()">Actualizar</button>
+    </div>
+  </div>
+  <table>
+    <thead>
+      <tr><th>Nombre</th><th>Tipo</th><th>Platino</th><th>Monto</th><th>Pago</th><th>Entradas</th><th>Boleto</th></tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+
+  <!-- ===== Reportes y reinicio ===== -->
+  <div class="top-actions">
+    <h2 style="font-size:1.05rem; margin:0;">Reportes / Nuevo evento</h2>
+  </div>
+  <button class="primary" type="button" onclick="exportarReporte()">Descargar reporte (CSV) de este evento</button>
+  <button class="primary" style="background:#a83232; margin-top:10px;" onclick="reiniciarEvento()">
+    Reiniciar para el próximo evento (archiva y borra la lista actual)
+  </button>
+  <p class="muted" id="resetMsg" style="text-align:center; margin-top:8px;"></p>
+
+  <h3 style="font-size:0.95rem; margin-top:18px;">Eventos anteriores</h3>
+  <ul id="archivosList" style="font-size:0.85rem; padding-left:18px;"></ul>
+</div>
+
+<script>
+window.addEventListener('load', () => {
+  cargarLista();
+  cargarConfig();
+  cargarArchivos();
+});
+
+async function cargarLista() {
+  const res = await fetch('/api/admin/attendees');
+  const rows = await res.json();
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+  let pagados = 0, entraron = 0;
+  rows.forEach(r => {
+    if (r.payment_status === 'pagado') pagados++;
+    if (r.checked_in) entraron++;
+    const tr = document.createElement('tr');
+    const tipoMap = { empresario:'Empresario', nuevo_empresario:'Nuevo Emp.', invitado:'Invitado' };
+    const tipoStr = (tipoMap[r.ticket_type] || 'Empresario') + (r.early_bird ? ' 🎉' : '');
+    tr.innerHTML = `
+      <td>${r.full_name}</td>
+      <td>${tipoStr}</td>
+      <td>${r.platino || ''}</td>
+      <td>$${r.amount}</td>
+      <td><span class="tag ${r.payment_status === 'pagado' ? 'pagado' : 'pendiente'}">${r.payment_status}</span></td>
+      <td><span class="tag ${r.checked_in ? 'entro' : 'no-entro'}">${r.checked_in_count || 0} vez(ces)</span></td>
+      <td><a target="_blank" href="/ticket.html?code=${r.ticket_code}">Ver</a></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('resumen').textContent = `${rows.length} registrados · ${pagados} pagados · ${entraron} entraron`;
+}
+
+async function cargarConfig() {
+  const res = await fetch('/api/admin/config');
+  if (!res.ok) return;
+  const cfg = await res.json();
+  document.getElementById('cfgEventName').value = cfg.eventName || '';
+  document.getElementById('cfgEventDate').value = cfg.eventDate || '';
+  document.getElementById('cfgPrecio').value = cfg.precio != null ? cfg.precio : '';
+  document.getElementById('cfgEarlyBirdPrecio').value = cfg.early_bird_precio != null ? cfg.early_bird_precio : '400';
+  document.getElementById('cfgEarlyBirdActive').checked = !!cfg.early_bird_active;
+  document.getElementById('cfgComision').value = cfg.comision_mp != null ? cfg.comision_mp : '3.49';
+  if (cfg.flyer) {
+    document.getElementById('flyerPreview').src = cfg.flyer;
+    document.getElementById('flyerPreviewBox').style.display = 'block';
+  }
+}
+
+async function guardarConfig() {
+  const msg = document.getElementById('cfgMsg');
+  msg.textContent = 'Guardando...';
+  const fd = new FormData();
+  fd.append('eventName', document.getElementById('cfgEventName').value.trim());
+  fd.append('eventDate', document.getElementById('cfgEventDate').value.trim());
+  fd.append('precio', document.getElementById('cfgPrecio').value.trim());
+  fd.append('early_bird_precio', document.getElementById('cfgEarlyBirdPrecio').value.trim());
+  fd.append('early_bird_active', document.getElementById('cfgEarlyBirdActive').checked ? 'true' : 'false');
+  fd.append('comision_mp', document.getElementById('cfgComision').value.trim());
+  const file = document.getElementById('cfgFlyer').files[0];
+  if (file) fd.append('flyer', file);
+
+  try {
+    const res = await fetch('/api/admin/config', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al guardar');
+    msg.textContent = 'Guardado ✓';
+    document.getElementById('cfgFlyer').value = '';
+    cargarConfig();
+  } catch (ex) {
+    msg.textContent = 'Error: ' + ex.message;
+  }
+}
+
+function exportarReporte() {
+  window.open('/api/admin/export', '_blank');
+}
+
+async function reiniciarEvento() {
+  if (!confirm('Esto archivará la lista actual de asistentes y dejará el registro vacío para el próximo evento. ¿Continuar?')) return;
+  const msg = document.getElementById('resetMsg');
+  msg.textContent = 'Procesando...';
+  try {
+    const res = await fetch('/api/admin/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error');
+    msg.textContent = 'Listo. Respaldo guardado: ' + data.archivo;
+    cargarLista();
+    cargarArchivos();
+  } catch (ex) {
+    msg.textContent = 'Error: ' + ex.message;
+  }
+}
+
+async function cargarArchivos() {
+  const res = await fetch('/api/admin/archivos');
+  if (!res.ok) return;
+  const archivos = await res.json();
+  const ul = document.getElementById('archivosList');
+  ul.innerHTML = '';
+  if (archivos.length === 0) {
+    ul.innerHTML = '<li class="muted">Sin eventos anteriores todavía.</li>';
+    return;
+  }
+  archivos.forEach(a => {
+    const li = document.createElement('li');
+    const link = document.createElement('a');
+    link.href = '/api/admin/export?archivo=' + encodeURIComponent(a);
+    link.target = '_blank';
+    link.textContent = a;
+    li.appendChild(link);
+    ul.appendChild(li);
+  });
+}
+</script>
+</body>
+</html>
