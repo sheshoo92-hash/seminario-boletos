@@ -45,7 +45,7 @@ const uploadFlyer = multer({
     filename: (req, file, cb) => cb(null, 'flyer' + path.extname(file.originalname)),
   }),
   limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => (/^image\//.test(file.mimetype) ? cb(null, true) : cb(new Error('Solo imágenes'))),
+  fileFilter: (req, file, cb) => (/^image\//.test(file.mimetype) ? cb(null, true) : cb(new Error('Solo imÃ¡genes'))),
 });
 
 // Multer para documentos de registro (INE / comprobante)
@@ -58,7 +58,7 @@ const uploadDocs = multer({
     },
   }),
   limits: { fileSize: 8 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => (/^image\//.test(file.mimetype) ? cb(null, true) : cb(new Error('Solo imágenes'))),
+  fileFilter: (req, file, cb) => (/^image\//.test(file.mimetype) ? cb(null, true) : cb(new Error('Solo imÃ¡genes'))),
 });
 
 // ---------- Helpers ----------
@@ -82,14 +82,14 @@ function getEventConfig() {
   };
 }
 
-// Número máximo de escaneos:
-// - early_bird = true (cualquier tipo, registrado durante el evento) = 2 (Ticket Holder + Día del evento)
+// NÃºmero mÃ¡ximo de escaneos:
+// - early_bird = true (cualquier tipo, registrado durante el evento) = 2 (Ticket Holder + DÃ­a del evento)
 // - Resto = 1
 function maxCheckins(att) {
   return att.early_bird ? 2 : 1;
 }
 
-// ---------- Config pública ----------
+// ---------- Config pÃºblica ----------
 app.get('/api/config', (req, res) => {
   const cfg = getEventConfig();
   res.json({
@@ -109,6 +109,7 @@ app.get('/api/config', (req, res) => {
 app.post('/api/register', uploadDocs.fields([
   { name: 'comprobante', maxCount: 1 },
   { name: 'ine_photo',   maxCount: 1 },
+  { name: 'ine_nuevo',   maxCount: 1 },
 ]), async (req, res) => {
   try {
     const {
@@ -122,7 +123,7 @@ app.post('/api/register', uploadDocs.fields([
 
     const type = ticket_type || 'empresario';
     if (!['empresario', 'nuevo_empresario', 'invitado'].includes(type)) {
-      return res.status(400).json({ error: 'Tipo de boleto inválido' });
+      return res.status(400).json({ error: 'Tipo de boleto invÃ¡lido' });
     }
 
     const cfg = getEventConfig();
@@ -135,9 +136,9 @@ app.post('/api/register', uploadDocs.fields([
     // -- Validaciones y precio por tipo --
     if (type === 'nuevo_empresario') {
       if (!auspicio_numero || !String(auspicio_numero).trim()) {
-        return res.status(400).json({ error: 'Falta el número de empresario' });
+        return res.status(400).json({ error: 'Falta el nÃºmero de empresario' });
       }
-      // Validar nombre completo (mínimo 2 palabras)
+      // Validar nombre completo (mÃ­nimo 2 palabras)
       if (full_name.trim().split(/\s+/).length < 2) {
         return res.status(400).json({ error: 'Por favor escribe tu nombre completo (nombre y apellido).' });
       }
@@ -145,7 +146,7 @@ app.post('/api/register', uploadDocs.fields([
       const registrosExistentes = db.getNuevoSociosPorNumero(auspicio_numero.trim());
       const nombreNorm = full_name.trim().toLowerCase().replace(/\s+/g, ' ');
 
-      // Función para detectar si dos nombres son similares (uno contiene al otro)
+      // FunciÃ³n para detectar si dos nombres son similares (uno contiene al otro)
       const nombresSimilares = (a, b) => {
         if (a === b) return true;
         if (a.includes(b) || b.includes(a)) return true;
@@ -160,33 +161,37 @@ app.post('/api/register', uploadDocs.fields([
         registrosExistentes.map(r => (r.full_name || '').trim().toLowerCase().replace(/\s+/g, ' '))
       )].filter(n => !nombresSimilares(n, nombreNorm));
 
-      // Regla 1: esta persona ya usó sus 2 eventos gratis
+      // Regla 1: esta persona ya usÃ³ sus 2 eventos gratis
       if (registrosMismaPersna.length >= 2) {
         return res.status(400).json({ error: 'Ya usaste tus 2 eventos gratuitos como Nuevo Empresario. Debes comprar un boleto de Empresario.' });
       }
 
-      // Regla 2: el número ya tiene 2 personas distintas y esta persona es una tercera
+      // Regla 2: el nÃºmero ya tiene 2 personas distintas y esta persona es una tercera
       if (personasUnicas.length >= 2 && registrosMismaPersna.length === 0) {
-        return res.status(400).json({ error: 'Este número de empresario ya tiene registrados al titular y cotitular. No se permiten más registros gratuitos con este número.' });
+        return res.status(400).json({ error: 'Este nÃºmero de empresario ya tiene registrados al titular y cotitular. No se permiten mÃ¡s registros gratuitos con este nÃºmero.' });
       }
       if (!req.files || !req.files.comprobante) {
         return res.status(400).json({ error: 'Debes subir el comprobante de tu fecha de auspicio' });
       }
       comprobante_image = req.files.comprobante[0].filename;
+      if (!req.files || !req.files.ine_nuevo) {
+        return res.status(400).json({ error: 'Debes subir una foto de tu INE' });
+      }
+      ine_image = req.files.ine_nuevo[0].filename;
       amount = 0; // gratis
-      if (cfg.early_bird_active) early_bird = true; // Ticket Holder si se registró durante el evento
+      if (cfg.early_bird_active) early_bird = true; // Ticket Holder si se registrÃ³ durante el evento
 
     } else if (type === 'invitado') {
       const existing = db.getInvitadoByNombre(full_name.trim());
       if (existing) {
-        return res.status(400).json({ error: 'Ya existe un registro de este invitado. Los invitados sólo pueden asistir gratuitamente una sola vez.' });
+        return res.status(400).json({ error: 'Ya existe un registro de este invitado. Los invitados sÃ³lo pueden asistir gratuitamente una sola vez.' });
       }
       if (!req.files || !req.files.ine_photo) {
         return res.status(400).json({ error: 'Debes subir una foto de tu INE' });
       }
       ine_image = req.files.ine_photo[0].filename;
       amount = 0; // acceso gratuito
-      if (cfg.early_bird_active) early_bird = true; // Ticket Holder si se registró durante el evento
+      if (cfg.early_bird_active) early_bird = true; // Ticket Holder si se registrÃ³ durante el evento
 
     } else { // empresario
       if (cfg.early_bird_active) {
@@ -268,7 +273,7 @@ app.post('/api/register', uploadDocs.fields([
   }
 });
 
-// ---------- Registro Paquete Grupo (4 boletos) ----------
+// ---------- Registro Paquete Grupo (4 boletos por $1400) ----------
 app.post('/api/register-paquete', async (req, res) => {
   try {
     const { personas } = req.body;
@@ -281,7 +286,7 @@ app.post('/api/register-paquete', async (req, res) => {
         return res.status(400).json({ error: `Persona ${i + 1}: escribe nombre y apellido` });
       }
       if (!p.platino || !p.esmeralda || !p.diamante) {
-        return res.status(400).json({ error: `Persona ${i + 1}: faltan datos de línea` });
+        return res.status(400).json({ error: `Persona ${i + 1}: faltan datos de lÃ­nea` });
       }
     }
 
@@ -327,11 +332,11 @@ app.post('/api/register-paquete', async (req, res) => {
       return res.json({ demo: true, paquete_id, redirect: `/paquete.html?id=${paquete_id}` });
     }
 
-    // Pago único via Mercado Pago
+    // Pago Ãºnico de $1400 via Mercado Pago
     const preference = new Preference(mpClient);
     const result = await preference.create({
       body: {
-        items: [{ title: `${cfg.eventName} — Paquete Grupo (4 boletos)`, quantity: 1, unit_price: PRECIO_PAQUETE, currency_id: 'MXN' }],
+        items: [{ title: `${cfg.eventName} â Paquete Grupo (4 boletos)`, quantity: 1, unit_price: PRECIO_PAQUETE, currency_id: 'MXN' }],
         payer: { name: personas[0].full_name.trim() },
         external_reference: `paquete:${paquete_id}`,
         back_urls: {
@@ -450,14 +455,14 @@ app.get('/api/admin/attendees', (req, res) => {
   res.json(db.getAll());
 });
 
-// ---------- ADMIN: búsqueda por nombre ----------
+// ---------- ADMIN: bÃºsqueda por nombre ----------
 app.get('/api/admin/search', (req, res) => {
   const q = req.query.q || '';
   if (q.trim().length < 2) return res.json([]);
   res.json(db.searchByName(q));
 });
 
-// ---------- ADMIN: configuración ----------
+// ---------- ADMIN: configuraciÃ³n ----------
 app.get('/api/admin/config', (req, res) => {
   res.json(getEventConfig());
 });
@@ -477,7 +482,7 @@ app.post('/api/admin/config', uploadFlyer.single('flyer'), (req, res) => {
     res.json({ ok: true, config: getEventConfig() });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'No se pudo guardar la configuración' });
+    res.status(500).json({ error: 'No se pudo guardar la configuraciÃ³n' });
   }
 });
 
@@ -515,10 +520,10 @@ app.get('/api/admin/export', (req, res) => {
   const comision = cfg.comision_mp / 100;
 
   const headers = [
-    'N° Boleto', 'Nombre completo', 'Tipo de boleto', 'Platino', 'Esmeralda', 'Diamante',
-    'N° Empresario', 'Fecha auspicio', 'Early Bird', 'Monto cobrado',
-    'Comisión MP estimada', 'Ingreso neto', 'Estado de pago',
-    'Entró', 'Veces escaneado', 'Fecha/hora de entrada', 'Registrado'
+    'NÂ° Boleto', 'Nombre completo', 'Tipo de boleto', 'Platino', 'Esmeralda', 'Diamante',
+    'NÂ° Empresario', 'Fecha auspicio', 'Early Bird', 'Monto cobrado',
+    'ComisiÃ³n MP estimada', 'Ingreso neto', 'Estado de pago',
+    'EntrÃ³', 'Veces escaneado', 'Fecha/hora de entrada', 'Registrado'
   ];
 
   const tipoLabel = { empresario: 'Empresario', nuevo_empresario: 'Nuevo Empresario', invitado: 'Invitado' };
@@ -533,7 +538,7 @@ app.get('/api/admin/export', (req, res) => {
     } catch(e) { return iso; }
   };
 
-  // Ordenar por fecha de registro (ascendente) para que el número sea cronológico
+  // Ordenar por fecha de registro (ascendente) para que el nÃºmero sea cronolÃ³gico
   const attendeesSorted = [...attendees].sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
   const rows = attendeesSorted.map((a, i) => {
     const monto = a.amount || 0;
@@ -546,12 +551,12 @@ app.get('/api/admin/export', (req, res) => {
       a.platino || '', a.esmeralda || '', a.diamante || '',
       a.auspicio_numero || '',
       a.fecha_auspicio || '',
-      a.early_bird ? 'Sí' : 'No',
+      a.early_bird ? 'SÃ­' : 'No',
       `$${monto}`,
       `$${comisionMonto}`,
       `$${neto}`,
       a.payment_status || '',
-      a.checked_in ? 'Sí' : 'No',
+      a.checked_in ? 'SÃ­' : 'No',
       a.checked_in_count || 0,
       a.checked_in_at || '',
       fmtDate(a.created_at),
@@ -573,13 +578,13 @@ app.get('/api/admin/export', (req, res) => {
   const csv = [headers, ...rows].map(r => r.map(csvEscape).join(',')).join('\n');
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${nombreArchivo}.csv"`);
-  res.send('﻿' + csv);
+  res.send('ï»¿' + csv);
 });
 
-// ---------- CHECK-IN (escáner de puerta) ----------
-// modo: 'ticket_holder' = registro previo (solo early bird) | 'evento' = día del seminario (default)
+// ---------- CHECK-IN (escÃ¡ner de puerta) ----------
+// modo: 'ticket_holder' = registro previo (solo early bird) | 'evento' = dÃ­a del seminario (default)
 // TH y evento son conteos INDEPENDIENTES para que no se interfieran.
-// Endpoint público de búsqueda para escáneres (sin datos sensibles)
+// Endpoint pÃºblico de bÃºsqueda para escÃ¡neres (sin datos sensibles)
 app.get('/api/scanner/search', (req, res) => {
   const q = req.query.q || '';
   if (q.trim().length < 2) return res.json([]);
@@ -597,7 +602,7 @@ app.get('/api/scanner/search', (req, res) => {
 app.post('/api/checkin', (req, res) => {
   const { ticket_code, modo } = req.body;
   console.log('[CHECKIN] modo recibido:', JSON.stringify(modo), '| code:', ticket_code);
-  if (!ticket_code) return res.status(400).json({ error: 'Código de boleto requerido' });
+  if (!ticket_code) return res.status(400).json({ error: 'CÃ³digo de boleto requerido' });
 
   const att = db.getByCode(ticket_code);
   if (!att) return res.status(404).json({ ok: false, reason: 'no_encontrado', message: 'Boleto no encontrado' });
@@ -616,25 +621,25 @@ app.post('/api/checkin', (req, res) => {
     if (att.th_scanned) {
       return res.json({ ok: false, reason: 'ya_escaneado_th', message: 'Este Ticket Holder ya fue registrado', attendee: enrichAttendee(att) });
     }
-    // Registrar TH — NO toca checked_in_count del evento
+    // Registrar TH â NO toca checked_in_count del evento
     const updated = db.updateByCode(ticket_code, { th_scanned: true, th_scanned_at: ts() });
-    return res.json({ ok: true, message: 'Ticket Holder registrado ✔', attendee: enrichAttendee(updated) });
+    return res.json({ ok: true, message: 'Ticket Holder registrado â', attendee: enrichAttendee(updated) });
   }
 
-  // ---- Modo Evento (día del seminario) — independiente del TH ----
+  // ---- Modo Evento (dÃ­a del seminario) â independiente del TH ----
   const count = att.checked_in_count || 0;
   if (count >= 1) {
-    return res.json({ ok: false, reason: 'ya_usado', message: 'Este boleto ya fue usado el día del evento', attendee: enrichAttendee(att) });
+    return res.json({ ok: false, reason: 'ya_usado', message: 'Este boleto ya fue usado el dÃ­a del evento', attendee: enrichAttendee(att) });
   }
   const updated = db.updateByCode(ticket_code, {
     checked_in: true,
     checked_in_count: 1,
     checked_in_at: ts(),
   });
-  res.json({ ok: true, message: 'Acceso permitido ✔', attendee: enrichAttendee(updated) });
+  res.json({ ok: true, message: 'Acceso permitido â', attendee: enrichAttendee(updated) });
 });
 
-// Agrega URLs de imágenes al objeto de asistente
+// Agrega URLs de imÃ¡genes al objeto de asistente
 function enrichAttendee(att) {
   return {
     ...att,
