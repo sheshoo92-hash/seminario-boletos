@@ -202,9 +202,8 @@ app.post('/api/register', uploadDocs.fields([
       }
     }
 
-    const ticket_number = db.getNextTicketNumber();
     const record = {
-      ticket_number,
+      ticket_number: null,
       ticket_code,
       full_name: full_name.trim(),
       platino: (platino || '').trim(),
@@ -229,15 +228,15 @@ app.post('/api/register', uploadDocs.fields([
 
     db.insertAttendee(record);
 
-    // Gratis (nuevo_empresario): marcar pagado directo
+    // Gratis (nuevo_empresario): marcar pagado directo y asignar número
     if (amount === 0) {
-      db.updateByCode(ticket_code, { payment_status: 'pagado' });
+      db.updateByCode(ticket_code, { payment_status: 'pagado', ticket_number: db.getNextTicketNumber() });
       return res.json({ demo: true, ticket_code, redirect: `/ticket.html?code=${ticket_code}` });
     }
 
     // Sin MP configurado: modo demo
     if (!mpClient) {
-      db.updateByCode(ticket_code, { payment_status: 'pagado' });
+      db.updateByCode(ticket_code, { payment_status: 'pagado', ticket_number: db.getNextTicketNumber() });
       return res.json({ demo: true, ticket_code, redirect: `/ticket.html?code=${ticket_code}` });
     }
 
@@ -298,9 +297,8 @@ app.post('/api/register-paquete', async (req, res) => {
 
     for (const p of personas) {
       const ticket_code = uuidv4();
-      const ticket_number = db.getNextTicketNumber();
       db.insertAttendee({
-        ticket_number,
+        ticket_number: null,
         ticket_code,
         full_name: p.full_name.trim(),
         platino: p.platino.trim(),
@@ -328,7 +326,9 @@ app.post('/api/register-paquete', async (req, res) => {
 
     // Modo demo (sin MP configurado)
     if (!mpClient) {
-      db.updateByPaqueteId(paquete_id, { payment_status: 'pagado' });
+      for (const code of ticket_codes) {
+        db.updateByCode(code, { payment_status: 'pagado', ticket_number: db.getNextTicketNumber() });
+      }
       return res.json({ demo: true, paquete_id, redirect: `/paquete.html?id=${paquete_id}` });
     }
 
@@ -391,9 +391,18 @@ app.post('/api/webhook/mercadopago', async (req, res) => {
       if (info.external_reference && info.status === 'approved') {
         const ref = info.external_reference;
         if (ref.startsWith('paquete:')) {
-          db.updateByPaqueteId(ref.replace('paquete:', ''), { payment_status: 'pagado', mp_payment_id: String(info.id) });
+          const paqId = ref.replace('paquete:', '');
+          const paqAttendees = db.getByPaqueteId(paqId);
+          for (const att of paqAttendees) {
+            const updates = { payment_status: 'pagado', mp_payment_id: String(info.id) };
+            if (!att.ticket_number) updates.ticket_number = db.getNextTicketNumber();
+            db.updateByCode(att.ticket_code, updates);
+          }
         } else {
-          db.updateByCode(ref, { payment_status: 'pagado', mp_payment_id: String(info.id) });
+          const existing = db.getByCode(ref);
+          const updates = { payment_status: 'pagado', mp_payment_id: String(info.id) };
+          if (existing && !existing.ticket_number) updates.ticket_number = db.getNextTicketNumber();
+          db.updateByCode(ref, updates);
         }
       }
     }
@@ -415,8 +424,11 @@ app.get('/api/ticket/:code', async (req, res) => {
       const search = await payment.search({ options: { external_reference: att.ticket_code, sort: 'date_created', criteria: 'desc' } });
       const approved = (search.results || []).find(p => p.status === 'approved');
       if (approved) {
-        db.updateByCode(att.ticket_code, { payment_status: 'pagado', mp_payment_id: String(approved.id) });
+        const updates = { payment_status: 'pagado', mp_payment_id: String(approved.id) };
+        if (!att.ticket_number) updates.ticket_number = db.getNextTicketNumber();
+        db.updateByCode(att.ticket_code, updates);
         att.payment_status = 'pagado';
+        if (!att.ticket_number) att.ticket_number = updates.ticket_number;
       }
     } catch (e) { /* ignora */ }
   }
@@ -452,14 +464,14 @@ app.get('/api/ticket/:code', async (req, res) => {
 
 // ---------- ADMIN: lista de asistentes ----------
 app.get('/api/admin/attendees', (req, res) => {
-  res.json(db.getAll());
+  res.json(db.getAll().filter(a => a.payment_status === 'pagado'));
 });
 
 // ---------- ADMIN: bÃºsqueda por nombre ----------
 app.get('/api/admin/search', (req, res) => {
   const q = req.query.q || '';
   if (q.trim().length < 2) return res.json([]);
-  res.json(db.searchByName(q));
+  res.json(db.searchByName(q).filter(a => a.payment_status === 'pagado'));
 });
 
 // ---------- ADMIN: configuraciÃ³n ----------
@@ -510,10 +522,10 @@ app.get('/api/admin/export', (req, res) => {
   if (req.query.archivo) {
     const archivo = db.getArchive(req.query.archivo);
     if (!archivo) return res.status(404).json({ error: 'Archivo no encontrado' });
-    attendees = archivo.attendees;
+    attendees = archivo.attendees.filter(a => a.payment_status === 'pagado');
     nombreArchivo = req.query.archivo.replace(/\.json$/, '');
   } else {
-    attendees = db.getAll();
+    attendees = db.getAll().filter(a => a.payment_status === 'pagado');
   }
 
   const cfg = getEventConfig();
