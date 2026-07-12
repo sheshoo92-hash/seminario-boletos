@@ -63,7 +63,7 @@
       <div class="type-card" data-type="nuevo_empresario">
         <h3>Boleto de Nuevo Empresario</h3>
         <p>Menos de 2 meses de auspicio — primeros 2 eventos <strong>gratis</strong></p>
-        <p style="font-size:0.78rem; color:#a86a00; margin-top:4px;">⚠ Obligatorio subir comprobante de tu fecha de registro</p>
+        <p style="font-size:0.78rem; color:#a86a00; margin-top:4px;">⚠ Obligatorio subir comprobante de tu fecha de registro y foto de tu INE</p>
         <span class="precio-badge gratis">GRATIS</span>
       </div>
       <div class="type-card" data-type="invitado">
@@ -100,6 +100,10 @@
         <label for="comprobante">Sube captura de pantalla de tu fecha de auspicio</label>
         <input type="file" id="comprobante" name="comprobante" accept="image/*" capture="environment">
         <img id="comprobantePreview" class="upload-preview" alt="Vista previa comprobante">
+
+        <label for="ine_nuevo" style="margin-top:12px;">Foto de tu INE (credencial de elector) <span style="color:#c0392b;">*</span></label>
+        <input type="file" id="ine_nuevo" name="ine_nuevo" accept="image/*" capture="environment">
+        <img id="ineNuevoPreview" class="upload-preview" alt="Vista previa INE">
       </div>
 
       <!-- Campos para Invitado -->
@@ -220,11 +224,13 @@ function setupPreview(inputId, previewId) {
 }
 setupPreview('comprobante', 'comprobantePreview');
 setupPreview('ine_photo', 'inePreview');
+setupPreview('ine_nuevo', 'ineNuevoPreview');
 
 ['full_name','platino','esmeralda','diamante','auspicio_numero'].forEach(id =>
   document.getElementById(id).addEventListener('input', checkValid)
 );
 document.getElementById('comprobante').addEventListener('change', checkValid);
+document.getElementById('ine_nuevo').addEventListener('change', checkValid);
 document.getElementById('ine_photo').addEventListener('change', checkValid);
 
 function checkValid() {
@@ -257,6 +263,7 @@ function checkValid() {
     if (type === 'nuevo_empresario') {
       if (document.getElementById('auspicio_numero').value.trim().length <= 2) pendientes.push('Número de empresario');
       if (document.getElementById('comprobante').files.length === 0) pendientes.push('Comprobante de auspicio');
+      if (document.getElementById('ine_nuevo').files.length === 0) pendientes.push('Foto de INE');
     }
     if (type === 'invitado') {
       if (document.getElementById('ine_photo').files.length === 0) pendientes.push('Foto de INE');
@@ -289,7 +296,6 @@ document.getElementById('form').addEventListener('submit', async e => {
     const type = document.getElementById('ticket_type').value;
 
     if (type === 'paquete_grupo') {
-      // Recopilar datos de las 4 personas
       const personas = [];
       document.querySelectorAll('.persona-bloque').forEach(b => {
         personas.push({
@@ -308,7 +314,6 @@ document.getElementById('form').addEventListener('submit', async e => {
       if (!res.ok) throw new Error(data.error || 'Error al registrar');
       window.location.href = data.redirect || (data.init_point ? data.init_point : `/paquete.html?id=${data.paquete_id}`);
     } else {
-      // Registro individual normal
       const fd = new FormData(document.getElementById('form'));
       const res = await fetch('/api/register', { method: 'POST', body: fd });
       const data = await res.json();
