@@ -81,9 +81,6 @@ function getEventConfig() {
   };
 }
 
-// Número máximo de escaneos:
-// - early_bird = true (cualquier tipo, registrado durante el evento) = 2 (Ticket Holder + Día del evento)
-// - Resto = 1
 function maxCheckins(att) {
   return att.early_bird ? 2 : 1;
 }
@@ -130,12 +127,10 @@ app.post('/api/register', uploadDocs.fields([
     let comprobante_image = null;
     let ine_image = null;
 
-    // -- Validaciones y precio por tipo --
     if (type === 'nuevo_empresario') {
       if (!auspicio_numero || !String(auspicio_numero).trim()) {
         return res.status(400).json({ error: 'Falta el número de empresario' });
       }
-      // Validar nombre completo (mínimo 2 palabras)
       if (full_name.trim().split(/\s+/).length < 2) {
         return res.status(400).json({ error: 'Por favor escribe tu nombre completo (nombre y apellido).' });
       }
@@ -143,14 +138,12 @@ app.post('/api/register', uploadDocs.fields([
       const registrosExistentes = db.getNuevoSociosPorNumero(auspicio_numero.trim());
       const nombreNorm = full_name.trim().toLowerCase().replace(/\s+/g, ' ');
 
-      // Función para detectar si dos nombres son similares (uno contiene al otro)
       const nombresSimilares = (a, b) => {
         if (a === b) return true;
         if (a.includes(b) || b.includes(a)) return true;
         return false;
       };
 
-      // Separar registros del mismo titular/cotitular vs otras personas
       const registrosMismaPersna = registrosExistentes.filter(r =>
         nombresSimilares(nombreNorm, (r.full_name || '').trim().toLowerCase().replace(/\s+/g, ' '))
       );
@@ -158,12 +151,10 @@ app.post('/api/register', uploadDocs.fields([
         registrosExistentes.map(r => (r.full_name || '').trim().toLowerCase().replace(/\s+/g, ' '))
       )].filter(n => !nombresSimilares(n, nombreNorm));
 
-      // Regla 1: esta persona ya usó sus 2 eventos gratis
       if (registrosMismaPersna.length >= 2) {
         return res.status(400).json({ error: 'Ya usaste tus 2 eventos gratuitos como Nuevo Empresario. Debes comprar un boleto de Empresario.' });
       }
 
-      // Regla 2: el número ya tiene 2 personas distintas y esta persona es una tercera
       if (personasUnicas.length >= 2 && registrosMismaPersna.length === 0) {
         return res.status(400).json({ error: 'Este número de empresario ya tiene registrados al titular y cotitular. No se permiten más registros gratuitos con este número.' });
       }
@@ -171,8 +162,8 @@ app.post('/api/register', uploadDocs.fields([
         return res.status(400).json({ error: 'Debes subir el comprobante de tu fecha de auspicio' });
       }
       comprobante_image = req.files.comprobante[0].filename;
-      amount = 0; // gratis
-      if (cfg.early_bird_active) early_bird = true; // Ticket Holder si se registró durante el evento
+      amount = 0;
+      if (cfg.early_bird_active) early_bird = true;
 
     } else if (type === 'invitado') {
       const existing = db.getInvitadoByNombre(full_name.trim());
@@ -183,10 +174,10 @@ app.post('/api/register', uploadDocs.fields([
         return res.status(400).json({ error: 'Debes subir una foto de tu INE' });
       }
       ine_image = req.files.ine_photo[0].filename;
-      amount = 0; // acceso gratuito
-      if (cfg.early_bird_active) early_bird = true; // Ticket Holder si se registró durante el evento
+      amount = 0;
+      if (cfg.early_bird_active) early_bird = true;
 
-    } else { // empresario
+    } else {
       if (cfg.early_bird_active) {
         amount = cfg.early_bird_precio;
         early_bird = true;
@@ -222,13 +213,11 @@ app.post('/api/register', uploadDocs.fields([
 
     db.insertAttendee(record);
 
-    // Gratis (nuevo_empresario): marcar pagado directo
     if (amount === 0) {
       db.updateByCode(ticket_code, { payment_status: 'pagado' });
       return res.json({ demo: true, ticket_code, redirect: `/ticket.html?code=${ticket_code}` });
     }
 
-    // Sin MP configurado: modo demo
     if (!mpClient) {
       db.updateByCode(ticket_code, { payment_status: 'pagado' });
       return res.json({ demo: true, ticket_code, redirect: `/ticket.html?code=${ticket_code}` });
@@ -247,6 +236,13 @@ app.post('/api/register', uploadDocs.fields([
         },
         auto_return: 'approved',
         notification_url: `${BASE_URL}/api/webhook/mercadopago`,
+        payment_methods: {
+          excluded_payment_types: [
+            { id: 'ticket' },
+            { id: 'bank_transfer' },
+            { id: 'atm' },
+          ],
+        },
       },
     });
 
@@ -312,13 +308,11 @@ app.post('/api/register-paquete', async (req, res) => {
       ticket_codes.push(ticket_code);
     }
 
-    // Modo demo (sin MP configurado)
     if (!mpClient) {
       db.updateByPaqueteId(paquete_id, { payment_status: 'pagado' });
       return res.json({ demo: true, paquete_id, redirect: `/paquete.html?id=${paquete_id}` });
     }
 
-    // Pago único de $1400 via Mercado Pago
     const preference = new Preference(mpClient);
     const result = await preference.create({
       body: {
@@ -332,6 +326,13 @@ app.post('/api/register-paquete', async (req, res) => {
         },
         auto_return: 'approved',
         notification_url: `${BASE_URL}/api/webhook/mercadopago`,
+        payment_methods: {
+          excluded_payment_types: [
+            { id: 'ticket' },
+            { id: 'bank_transfer' },
+            { id: 'atm' },
+          ],
+        },
       },
     });
 
@@ -434,14 +435,12 @@ app.get('/api/admin/attendees', (req, res) => {
   res.json(db.getAll());
 });
 
-// ---------- ADMIN: búsqueda por nombre ----------
 app.get('/api/admin/search', (req, res) => {
   const q = req.query.q || '';
   if (q.trim().length < 2) return res.json([]);
   res.json(db.searchByName(q));
 });
 
-// ---------- ADMIN: configuración ----------
 app.get('/api/admin/config', (req, res) => {
   res.json(getEventConfig());
 });
@@ -464,7 +463,6 @@ app.post('/api/admin/config', uploadFlyer.single('flyer'), (req, res) => {
   }
 });
 
-// ---------- ADMIN: reiniciar evento ----------
 app.post('/api/admin/reset', (req, res) => {
   try {
     const cfg = getEventConfig();
@@ -476,12 +474,10 @@ app.post('/api/admin/reset', (req, res) => {
   }
 });
 
-// ---------- ADMIN: archivos anteriores ----------
 app.get('/api/admin/archivos', (req, res) => {
   res.json(db.listArchives());
 });
 
-// ---------- ADMIN: exportar CSV ----------
 app.get('/api/admin/export', (req, res) => {
   let attendees;
   let nombreArchivo = 'reporte';
@@ -516,7 +512,6 @@ app.get('/api/admin/export', (req, res) => {
     } catch(e) { return iso; }
   };
 
-  // Ordenar por fecha de registro (ascendente) para que el número sea cronológico
   const attendeesSorted = [...attendees].sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
   const rows = attendeesSorted.map((a, i) => {
     const monto = a.amount || 0;
@@ -541,7 +536,6 @@ app.get('/api/admin/export', (req, res) => {
     ];
   });
 
-  // Totales al final
   const totalCobrado = attendees.filter(a => a.payment_status === 'pagado').reduce((s, a) => s + (a.amount || 0), 0);
   const totalComision = (totalCobrado * comision).toFixed(2);
   const totalNeto = (totalCobrado - totalCobrado * comision).toFixed(2);
@@ -559,10 +553,7 @@ app.get('/api/admin/export', (req, res) => {
   res.send('﻿' + csv);
 });
 
-// ---------- CHECK-IN (escáner de puerta) ----------
-// modo: 'ticket_holder' = registro previo (solo early bird) | 'evento' = día del seminario (default)
-// TH y evento son conteos INDEPENDIENTES para que no se interfieran.
-// Endpoint público de búsqueda para escáneres (sin datos sensibles)
+// ---------- CHECK-IN ----------
 app.get('/api/scanner/search', (req, res) => {
   const q = req.query.q || '';
   if (q.trim().length < 2) return res.json([]);
@@ -591,7 +582,6 @@ app.post('/api/checkin', (req, res) => {
     day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true,
   });
 
-  // ---- Modo Ticket Holder (conteo SEPARADO del evento) ----
   if (modo === 'ticket_holder') {
     if (!att.early_bird) {
       return res.json({ ok: false, reason: 'no_aplica_th', message: 'Este boleto no aplica Ticket Holder (no es Early Bird)', attendee: enrichAttendee(att) });
@@ -599,12 +589,10 @@ app.post('/api/checkin', (req, res) => {
     if (att.th_scanned) {
       return res.json({ ok: false, reason: 'ya_escaneado_th', message: 'Este Ticket Holder ya fue registrado', attendee: enrichAttendee(att) });
     }
-    // Registrar TH — NO toca checked_in_count del evento
     const updated = db.updateByCode(ticket_code, { th_scanned: true, th_scanned_at: ts() });
     return res.json({ ok: true, message: 'Ticket Holder registrado ✔', attendee: enrichAttendee(updated) });
   }
 
-  // ---- Modo Evento (día del seminario) — independiente del TH ----
   const count = att.checked_in_count || 0;
   if (count >= 1) {
     return res.json({ ok: false, reason: 'ya_usado', message: 'Este boleto ya fue usado el día del evento', attendee: enrichAttendee(att) });
@@ -617,7 +605,6 @@ app.post('/api/checkin', (req, res) => {
   res.json({ ok: true, message: 'Acceso permitido ✔', attendee: enrichAttendee(updated) });
 });
 
-// Agrega URLs de imágenes al objeto de asistente
 function enrichAttendee(att) {
   return {
     ...att,
