@@ -119,8 +119,10 @@ async function cargarConfig() {
   document.getElementById('cfgEarlyBirdActive').checked = !!cfg.early_bird_active;
   document.getElementById('cfgComision').value = cfg.comision_mp != null ? cfg.comision_mp : '3.49';
   if (cfg.flyer) {
-    document.getElementById('flyerPreview').src = cfg.flyer;
+    document.getElementById('flyerPreview').src = '/uploads/' + cfg.flyer;
     document.getElementById('flyerPreviewBox').style.display = 'block';
+  } else {
+        document.getElementById('flyerPreviewBox').style.display = 'none';
   }
 }
 
