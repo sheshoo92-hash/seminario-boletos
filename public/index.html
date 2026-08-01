@@ -43,7 +43,7 @@
   <img id="flyer" src="" alt="Flyer del evento" style="display:none; width:100%; border-radius:12px; margin-bottom:14px;">
   <h1 id="eventTitle">Seminario</h1>
   <p class="subtitle" id="eventDate" style="display:none;"></p>
-  <p class="subtitle">\llena tus datos para generar tu boleto digital</p>
+  <p class="subtitle">Llena tus datos para generar tu boleto digital</p>
 
   <form id="form" enctype="multipart/form-data">
 
@@ -56,7 +56,7 @@
         <span class="precio-badge" id="precioEmpresario">$450</span>
       </div>
       <div class="type-card paquete-card" data-type="paquete_grupo">
-        <h3>🎟Paquete Grupo — 4 boletos</h3>
+        <h3>🎟 Paquete Grupo — 4 boletos</h3>
         <p>4 personas al precio especial de grupo</p>
         <span class="precio-badge paquete" id="precioPaquete">$1,400</span>
       </div>
@@ -236,11 +236,11 @@ function setupPreview(inputId, previewId) {
     }
   });
 }
-setupPreview('comprobante', 'comprobantePreviet');
+setupPreview('comprobante', 'comprobantePreview');
 setupPreview('ine_photo', 'inePreview');
-setupPreview('ine_nuevo', 'ineNuevoPreviet');
+setupPreview('ine_nuevo', 'ineNuevoPreview');
 
-['full_name', 'platino' , 'esmeralda', 'diamante', 'auspicio_numero'].forEach(id =>
+['full_name','platino','esmeralda','diamante','auspicio_numero'].forEach(id =>
   document.getElementById(id).addEventListener('input', checkValid)
 );
 document.getElementById('comprobante').addEventListener('change', checkValid);
@@ -270,7 +270,7 @@ function checkValid() {
     const platino  = document.getElementById('platino').value.trim();
     const esmeralda= document.getElementById('esmeralda').value.trim();
     const diamante = document.getElementById('diamante').value.trim();
-    if (name.split(/\s+/).length < 2 || name.length <= 4) pendientes.push('Nombre completo (nombre y apellido) ');
+    if (name.split(/\s+/).length < 2 || name.length <= 4) pendientes.push('Nombre completo (nombre y apellido)');
     if (platino.length <= 1)   pendientes.push('Platino');
     if (esmeralda.length <= 1) pendientes.push('Esmeralda');
     if (diamante.length <= 1)  pendientes.push('Diamante');
