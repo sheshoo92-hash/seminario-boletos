@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -43,7 +43,7 @@
   <img id="flyer" src="" alt="Flyer del evento" style="display:none; width:100%; border-radius:12px; margin-bottom:14px;">
   <h1 id="eventTitle">Seminario</h1>
   <p class="subtitle" id="eventDate" style="display:none;"></p>
-  <p class="subtitle">Llena tus datos para generar tu boleto digital</p>
+  <p class="subtitle">\llena tus datos para generar tu boleto digital</p>
 
   <form id="form" enctype="multipart/form-data">
 
@@ -56,7 +56,7 @@
         <span class="precio-badge" id="precioEmpresario">$450</span>
       </div>
       <div class="type-card paquete-card" data-type="paquete_grupo">
-        <h3>🎟 Paquete Grupo — 4 boletos</h3>
+        <h3>🎟Paquete Grupo — 4 boletos</h3>
         <p>4 personas al precio especial de grupo</p>
         <span class="precio-badge paquete" id="precioPaquete">$1,400</span>
       </div>
@@ -141,7 +141,7 @@ fetch('/api/config').then(r => r.json()).then(data => {
   }
   if (cfg.flyer) {
     const img = document.getElementById('flyer');
-    img.src = cfg.flyer;
+    img.src = '/uploads/' + cfg.flyer;
     img.style.display = 'block';
   }
   updatePrecioDisplay();
@@ -166,6 +166,11 @@ function buildPersonasForm() {
   }
 }
 
+// Calcula comisión MP real: 3.49% + $4 fijos + 16% IVA
+function calcComision(price) {
+  return Math.round((price * 0.0349 + 4) * 1.16);
+}
+
 function updatePrecioDisplay() {
   const type = document.getElementById('ticket_type').value;
   let label = '';
@@ -174,22 +179,31 @@ function updatePrecioDisplay() {
   if (type === 'nuevo_empresario' || type === 'invitado') {
     label = 'Acceso gratuito ✓';
     btn.textContent = 'Obtener boleto';
+    document.getElementById('precioEmpresario').textContent = cfg.early_bird_active ? '$' + cfg.early_bird_precio + ' 🎉' : '$' + (cfg.precio || 450);
   } else if (type === 'paquete_grupo') {
     const pp = cfg.precio_paquete || 1400;
-    label = `Paquete Grupo: $${pp.toLocaleString()} total 🎟`;
+    const com = calcComision(pp);
+    label = `Paquete Grupo: $${pp.toLocaleString()} + $${com} comisión de la plataforma de cobro 🎟`;
     btn.textContent = 'Continuar al pago — Paquete Grupo';
-    document.getElementById('precioPaquete').textContent = `$${pp.toLocaleString()}`;
+    document.getElementById('precioPaquete').innerHTML =
+      `$${pp.toLocaleString()} <span style="font-size:0.72rem;font-weight:400;opacity:0.88;display:block;line-height:1.4;margin-top:2px;">+ ($${com} comisión de la plataforma de cobro<br>· $${Math.round(com/4 * 2)/2} por persona)</span>`;
   } else {
     const precio = cfg.precio || 450;
     if (cfg.early_bird_active) {
-      label = 'Precio especial (early bird): $' + cfg.early_bird_precio + ' 🎉';
+      const ep = Number(cfg.early_bird_precio) || 400;
+      const com = calcComision(ep);
+      label = `Precio especial (early bird): $${ep} + $${com} comisión de la plataforma de cobro 🎉`;
+      document.getElementById('precioEmpresario').innerHTML =
+        `$${ep} 🎉 <span style="font-size:0.72rem;font-weight:400;opacity:0.88;display:block;line-height:1.4;margin-top:2px;">+ ($${com} comisión de la plataforma de cobro)</span>`;
     } else {
-      label = 'Costo del boleto: $' + precio;
+      const com = calcComision(precio);
+      label = `Costo del boleto: $${precio} + $${com} comisión de la plataforma de cobro`;
+      document.getElementById('precioEmpresario').innerHTML =
+        `$${precio} <span style="font-size:0.72rem;font-weight:400;opacity:0.88;display:block;line-height:1.4;margin-top:2px;">+ ($${com} comisión de la plataforma de cobro)</span>`;
     }
     btn.textContent = 'Continuar al pago';
   }
   document.getElementById('precioInfo').textContent = label;
-  document.getElementById('precioEmpresario').textContent = cfg.early_bird_active ? '$' + cfg.early_bird_precio + ' 🎉' : '$' + (cfg.precio || 450);
 }
 
 // Selección de tipo
@@ -222,11 +236,11 @@ function setupPreview(inputId, previewId) {
     }
   });
 }
-setupPreview('comprobante', 'comprobantePreview');
+setupPreview('comprobante', 'comprobantePreviet');
 setupPreview('ine_photo', 'inePreview');
-setupPreview('ine_nuevo', 'ineNuevoPreview');
+setupPreview('ine_nuevo', 'ineNuevoPreviet');
 
-['full_name','platino','esmeralda','diamante','auspicio_numero'].forEach(id =>
+['full_name', 'platino' , 'esmeralda', 'diamante', 'auspicio_numero'].forEach(id =>
   document.getElementById(id).addEventListener('input', checkValid)
 );
 document.getElementById('comprobante').addEventListener('change', checkValid);
@@ -256,7 +270,7 @@ function checkValid() {
     const platino  = document.getElementById('platino').value.trim();
     const esmeralda= document.getElementById('esmeralda').value.trim();
     const diamante = document.getElementById('diamante').value.trim();
-    if (name.split(/\s+/).length < 2 || name.length <= 4) pendientes.push('Nombre completo (nombre y apellido)');
+    if (name.split(/\s+/).length < 2 || name.length <= 4) pendientes.push('Nombre completo (nombre y apellido) ');
     if (platino.length <= 1)   pendientes.push('Platino');
     if (esmeralda.length <= 1) pendientes.push('Esmeralda');
     if (diamante.length <= 1)  pendientes.push('Diamante');
@@ -296,6 +310,7 @@ document.getElementById('form').addEventListener('submit', async e => {
     const type = document.getElementById('ticket_type').value;
 
     if (type === 'paquete_grupo') {
+      // Recopilar datos de las 4 personas
       const personas = [];
       document.querySelectorAll('.persona-bloque').forEach(b => {
         personas.push({
@@ -314,6 +329,7 @@ document.getElementById('form').addEventListener('submit', async e => {
       if (!res.ok) throw new Error(data.error || 'Error al registrar');
       window.location.href = data.redirect || (data.init_point ? data.init_point : `/paquete.html?id=${data.paquete_id}`);
     } else {
+      // Registro individual normal
       const fd = new FormData(document.getElementById('form'));
       const res = await fetch('/api/register', { method: 'POST', body: fd });
       const data = await res.json();
