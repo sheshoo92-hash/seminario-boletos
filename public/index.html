@@ -141,7 +141,7 @@ fetch('/api/config').then(r => r.json()).then(data => {
   }
   if (cfg.flyer) {
     const img = document.getElementById('flyer');
-    img.src = '/uploads/' + cfg.flyer;
+    img.src = cfg.flyer;
     img.style.display = 'block';
   }
   updatePrecioDisplay();
