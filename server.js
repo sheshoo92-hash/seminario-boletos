@@ -542,7 +542,7 @@ app.get('/api/admin/export', (req, res) => {
     'NÂ° Boleto', 'Nombre completo', 'Tipo de boleto', 'Platino', 'Esmeralda', 'Diamante',
     'NÂ° Empresario', 'Fecha auspicio', 'Early Bird', 'Monto cobrado',
     'ComisiÃ³n MP estimada', 'Ingreso neto', 'Estado de pago',
-    'EntrÃ³', 'Veces escaneado', 'Fecha/hora de entrada', 'Registrado', 'Link Boleto'
+    'EntrÃ³', 'Veces escaneado', 'Fecha/hora de entrada', 'TH Escaneado', 'Fecha TH', 'Registrado', 'Link Boleto'
   ];
 
   const tipoLabel = { empresario: 'Empresario', nuevo_empresario: 'Nuevo Empresario', invitado: 'Invitado' };
@@ -578,6 +578,8 @@ app.get('/api/admin/export', (req, res) => {
       a.checked_in ? 'SÃ­' : 'No',
       a.checked_in_count || 0,
       a.checked_in_at || '',
+      a.th_scanned ? 'SÃ­' : 'No',
+      a.th_scanned_at || '',
       fmtDate(a.created_at),
       `${BASE_URL}/ticket.html?code=${a.ticket_code}`,
     ];
