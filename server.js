@@ -672,14 +672,26 @@ function enrichAttendee(att) {
   };
 }
 
-// TEMP: insert attendee endpoint
-app.post('/api/admin/insert-attendee', (req, res) => {
-  const { full_name, email, ticket_type, amount, payment_status, mp_payment_id, ticket_code, platino, esmeralda, diamante, early_bird, auspicio_numero } = req.body;
-  const db = require('./db');
-  try {
-    const result = db.insertAttendee({ full_name, email, ticket_type: ticket_type || 'empresario', amount: amount || 0, payment_status: payment_status || 'pagado', mp_payment_id: mp_payment_id || null, ticket_code, platino: platino || '', esmeralda: esmeralda || '', diamante: diamante || '', early_bird: early_bird !== undefined ? early_bird : true, payment_method: 'mercadopago', auspicio_numero: auspicio_numero || null });
-    res.json({ ok: true, result });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+// TEMP: cleanup endpoint
+app.delete('/api/admin/cleanup-invalid', (req, res) => {
+  const fs = require('fs');
+  const path = require('path');
+  const DATA_DIR = process.env.DATA_DIR || __dirname;
+  const FILE = path.join(DATA_DIR, 'data.json');
+  const raw = fs.readFileSync(FILE, 'utf8');
+  const data = JSON.parse(raw);
+  const before = data.attendees ? data.attendees.length : (Array.isArray(data) ? data.length : 0);
+  let cleaned;
+  if (data.attendees) {
+    cleaned = { ...data, attendees: data.attendees.filter(a => a.ticket_code && a.ticket_code !== 'undefined' && a.full_name) };
+  } else if (Array.isArray(data)) {
+    cleaned = data.filter(a => a.ticket_code && a.ticket_code !== 'undefined' && a.full_name);
+  } else {
+    return res.json({ error: 'Unknown data format', raw: JSON.stringify(data).substring(0,200) });
+  }
+  fs.writeFileSync(FILE, JSON.stringify(cleaned, null, 2));
+  const after = cleaned.attendees ? cleaned.attendees.length : cleaned.length;
+  res.json({ ok: true, before, after, removed: before - after });
 });
 // END TEMP
 
