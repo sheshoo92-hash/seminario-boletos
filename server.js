@@ -467,6 +467,18 @@ app.get('/api/admin/attendees', (req, res) => {
   res.json(db.getAll().filter(a => a.payment_status === 'pagado'));
 });
 
+// TEMP: insert attendee record directly
+app.post('/api/admin/insert-attendee', (req, res) => {
+  try {
+    const r = req.body;
+    if (!r || !r.ticket_code) return res.status(400).json({ error: 'ticket_code required' });
+    db.insertAttendee(r);
+    res.json({ ok: true, ticket_code: r.ticket_code });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ---------- ADMIN: bÃºsqueda por nombre ----------
 app.get('/api/admin/search', (req, res) => {
   const q = req.query.q || '';
