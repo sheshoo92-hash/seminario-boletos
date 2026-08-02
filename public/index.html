@@ -166,40 +166,47 @@ function buildPersonasForm() {
   }
 }
 
-// Calcula comisión MP real: 3.49% + $4 fijos + 16% IVA
-function calcComision(price) {
-  return Math.round((price * 0.0349 + 4) * 1.16);
+// Los precios en config son el TOTAL que paga el cliente (base + comisión MP).
+// Fórmula inversa: total = base × 1.041064 + 4.64  →  base = (total − 4.64) / 1.041064
+function getPriceBreakdown(total) {
+  const base = Math.round((total - 4.64) / 1.041064);
+  const com = total - base;
+  return { base, com };
 }
 
 function updatePrecioDisplay() {
   const type = document.getElementById('ticket_type').value;
   let label = '';
   const btn = document.getElementById('btnSubmit');
+  const s = 'font-size:0.72rem;font-weight:400;opacity:0.88;display:block;line-height:1.4;margin-top:2px;';
 
   if (type === 'nuevo_empresario' || type === 'invitado') {
     label = 'Acceso gratuito ✓';
     btn.textContent = 'Obtener boleto';
-    document.getElementById('precioEmpresario').textContent = cfg.early_bird_active ? '$' + cfg.early_bird_precio + ' 🎉' : '$' + (cfg.precio || 450);
+    const refTotal = cfg.early_bird_active ? (Number(cfg.early_bird_precio) || 421) : (cfg.precio || 473);
+    const { base: refBase } = getPriceBreakdown(refTotal);
+    document.getElementById('precioEmpresario').textContent = '$' + refBase + (cfg.early_bird_active ? ' 🎉' : '');
   } else if (type === 'paquete_grupo') {
-    const pp = cfg.precio_paquete || 1400;
-    const com = calcComision(pp);
+    const total = cfg.precio_paquete || 1462;
+    const { base: pp, com } = getPriceBreakdown(total);
+    const perPerson = Number.isInteger(com / 4) ? (com / 4) : (com / 4).toFixed(1);
     label = `Paquete Grupo: $${pp.toLocaleString()} + $${com} comisión de la plataforma de cobro 🎟`;
     btn.textContent = 'Continuar al pago — Paquete Grupo';
     document.getElementById('precioPaquete').innerHTML =
-      `$${pp.toLocaleString()} <span style="font-size:0.72rem;font-weight:400;opacity:0.88;display:block;line-height:1.4;margin-top:2px;">+ ($${com} comisión de la plataforma de cobro<br>· $${Math.round(com/4 * 2)/2} por persona)</span>`;
+      `$${pp.toLocaleString()} <span style="${s}">+ ($${com} comisión de la plataforma de cobro<br>· $${perPerson} por persona)</span>`;
   } else {
-    const precio = cfg.precio || 450;
     if (cfg.early_bird_active) {
-      const ep = Number(cfg.early_bird_precio) || 400;
-      const com = calcComision(ep);
+      const total = Number(cfg.early_bird_precio) || 421;
+      const { base: ep, com } = getPriceBreakdown(total);
       label = `Precio especial (early bird): $${ep} + $${com} comisión de la plataforma de cobro 🎉`;
       document.getElementById('precioEmpresario').innerHTML =
-        `$${ep} 🎉 <span style="font-size:0.72rem;font-weight:400;opacity:0.88;display:block;line-height:1.4;margin-top:2px;">+ ($${com} comisión de la plataforma de cobro)</span>`;
+        `$${ep} 🎉 <span style="${s}">+ ($${com} comisión de la plataforma de cobro)</span>`;
     } else {
-      const com = calcComision(precio);
-      label = `Costo del boleto: $${precio} + $${com} comisión de la plataforma de cobro`;
+      const total = cfg.precio || 473;
+      const { base: pr, com } = getPriceBreakdown(total);
+      label = `Costo del boleto: $${pr} + $${com} comisión de la plataforma de cobro`;
       document.getElementById('precioEmpresario').innerHTML =
-        `$${precio} <span style="font-size:0.72rem;font-weight:400;opacity:0.88;display:block;line-height:1.4;margin-top:2px;">+ ($${com} comisión de la plataforma de cobro)</span>`;
+        `$${pr} <span style="${s}">+ ($${com} comisión de la plataforma de cobro)</span>`;
     }
     btn.textContent = 'Continuar al pago';
   }
