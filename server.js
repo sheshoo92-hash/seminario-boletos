@@ -529,7 +529,14 @@ app.get('/api/admin/export', (req, res) => {
   }
 
   const cfg = getEventConfig();
-  const comision = cfg.comision_mp / 100;
+  // Comisión real MP: (monto × 3.49% + $4 fijo) × 1.16 IVA
+  // Para paquetes el cargo fijo aplica una sola vez al total de 4 personas
+  const calcComisionMP = (a) => {
+    const m = a.amount || 0;
+    if (m === 0 || a.payment_status !== 'pagado') return 0;
+    if (a.paquete_id) return ((m * 4 * 0.0349 + 4) * 1.16) / 4;
+    return (m * 0.0349 + 4) * 1.16;
+  };
 
   const headers = [
     'NÂ° Boleto', 'Nombre completo', 'Tipo de boleto', 'Platino', 'Esmeralda', 'Diamante',
@@ -554,8 +561,8 @@ app.get('/api/admin/export', (req, res) => {
   const attendeesSorted = [...attendees].sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
   const rows = attendeesSorted.map((a, i) => {
     const monto = a.amount || 0;
-    const comisionMonto = a.payment_status === 'pagado' ? (monto * comision).toFixed(2) : '0.00';
-    const neto = a.payment_status === 'pagado' ? (monto - monto * comision).toFixed(2) : '0.00';
+    const comisionMonto = calcComisionMP(a).toFixed(2);
+    const neto = monto > 0 && a.payment_status === 'pagado' ? (monto - calcComisionMP(a)).toFixed(2) : '0.00';
     return [
       a.ticket_number || (i + 1),
       a.full_name || '',
@@ -577,8 +584,10 @@ app.get('/api/admin/export', (req, res) => {
 
   // Totales al final
   const totalCobrado = attendees.filter(a => a.payment_status === 'pagado').reduce((s, a) => s + (a.amount || 0), 0);
-  const totalComision = (totalCobrado * comision).toFixed(2);
-  const totalNeto = (totalCobrado - totalCobrado * comision).toFixed(2);
+  const pagadosLista = attendees.filter(a => a.payment_status === 'pagado');
+  const totalComisionNum = pagadosLista.reduce((s, a) => s + calcComisionMP(a), 0);
+  const totalComision = totalComisionNum.toFixed(2);
+  const totalNeto = (totalCobrado - totalComisionNum).toFixed(2);
   rows.push([]);
   rows.push(['TOTALES', '', '', '', '', '', '', '', '', `$${totalCobrado}`, `$${totalComision}`, `$${totalNeto}`]);
 
