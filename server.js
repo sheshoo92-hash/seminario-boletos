@@ -672,6 +672,17 @@ function enrichAttendee(att) {
   };
 }
 
+// TEMP: insert attendee endpoint
+app.post('/api/admin/insert-attendee', (req, res) => {
+  const { full_name, email, ticket_type, amount, payment_status, mp_payment_id, ticket_code, platino, esmeralda, diamante, early_bird, auspicio_numero } = req.body;
+  const db = require('./db');
+  try {
+    const result = db.insertAttendee({ full_name, email, ticket_type: ticket_type || 'empresario', amount: amount || 0, payment_status: payment_status || 'pagado', mp_payment_id: mp_payment_id || null, ticket_code, platino: platino || '', esmeralda: esmeralda || '', diamante: diamante || '', early_bird: early_bird !== undefined ? early_bird : true, payment_method: 'mercadopago', auspicio_numero: auspicio_numero || null });
+    res.json({ ok: true, result });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+// END TEMP
+
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en ${BASE_URL} (puerto ${PORT})`);
 });
