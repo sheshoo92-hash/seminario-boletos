@@ -672,28 +672,6 @@ function enrichAttendee(att) {
   };
 }
 
-// TEMP: cleanup endpoint
-app.delete('/api/admin/cleanup-invalid', (req, res) => {
-  const fs = require('fs');
-  const path = require('path');
-  const DATA_DIR = process.env.DATA_DIR || __dirname;
-  const FILE = path.join(DATA_DIR, 'data.json');
-  const raw = fs.readFileSync(FILE, 'utf8');
-  const data = JSON.parse(raw);
-  const before = data.attendees ? data.attendees.length : (Array.isArray(data) ? data.length : 0);
-  let cleaned;
-  if (data.attendees) {
-    cleaned = { ...data, attendees: data.attendees.filter(a => a.ticket_code && a.ticket_code !== 'undefined' && a.full_name) };
-  } else if (Array.isArray(data)) {
-    cleaned = data.filter(a => a.ticket_code && a.ticket_code !== 'undefined' && a.full_name);
-  } else {
-    return res.json({ error: 'Unknown data format', raw: JSON.stringify(data).substring(0,200) });
-  }
-  fs.writeFileSync(FILE, JSON.stringify(cleaned, null, 2));
-  const after = cleaned.attendees ? cleaned.attendees.length : cleaned.length;
-  res.json({ ok: true, before, after, removed: before - after });
-});
-// END TEMP
 
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en ${BASE_URL} (puerto ${PORT})`);
