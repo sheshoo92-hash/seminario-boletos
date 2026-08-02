@@ -576,7 +576,7 @@ app.get('/api/admin/export', (req, res) => {
       `$${neto}`,
       a.payment_status || '',
       a.checked_in ? 'SÃ­' : 'No',
-      a.checked_in_count || 0,
+      (a.checked_in_count || 0) + (a.th_scanned ? 1 : 0),
       a.checked_in_at || '',
       a.th_scanned ? 'SÃ­' : 'No',
       a.th_scanned_at || '',
