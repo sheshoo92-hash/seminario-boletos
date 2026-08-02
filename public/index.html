@@ -169,8 +169,9 @@ function buildPersonasForm() {
 // Los precios en config son el TOTAL que paga el cliente (base + comisión MP).
 // Fórmula inversa: total = base × 1.041064 + 4.64  →  base = (total − 4.64) / 1.041064
 function getPriceBreakdown(total) {
-  const base = Math.round((total - 4.64) / 1.041064);
-  const com = total - base;
+  // Fórmula real MP: (total × 3.49% + $4 fijo) × 1.16 IVA
+  const com = Math.round((total * 0.0349 + 4) * 1.16);
+  const base = total - com;
   return { base, com };
 }
 
