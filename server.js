@@ -673,16 +673,6 @@ function enrichAttendee(att) {
 }
 
 
-// TEMP: update attendee
-app.patch('/api/admin/update-attendee/:code', (req, res) => {
-  const db = require('./db');
-  try {
-    db.updateByCode(req.params.code, req.body);
-    const updated = db.getByCode(req.params.code);
-    res.json({ ok: true, updated });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-// END TEMP
 
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en ${BASE_URL} (puerto ${PORT})`);
