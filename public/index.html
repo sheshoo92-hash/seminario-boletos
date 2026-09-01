@@ -56,20 +56,20 @@
         <span class="precio-badge" id="precioEmpresario">$450</span>
       </div>
       <div class="type-card paquete-card" data-type="paquete_grupo">
-        <h3>ð Paquete Grupo â 4 boletos</h3>
+        <h3>🎟 Paquete Grupo — 4 boletos</h3>
         <p>4 personas al precio especial de grupo</p>
         <span class="precio-badge paquete" id="precioPaquete">$1,400</span>
       </div>
       <div class="type-card" data-type="nuevo_empresario">
         <h3>Boleto de Nuevo Empresario</h3>
-        <p>Menos de 2 meses de auspicio â primeros 2 eventos <strong>gratis</strong></p>
-        <p style="font-size:0.78rem; color:#a86a00; margin-top:4px;">â  Obligatorio subir comprobante de tu fecha de registro y foto de tu INE</p>
+        <p>Menos de 2 meses de auspicio — primeros 2 eventos <strong>gratis</strong></p>
+        <p style="font-size:0.78rem; color:#a86a00; margin-top:4px;">⚠ Obligatorio subir comprobante de tu fecha de registro y foto de tu INE</p>
         <span class="precio-badge gratis">GRATIS</span>
       </div>
       <div class="type-card" data-type="invitado">
         <h3>Acceso de Invitado</h3>
         <p>Solo puedes ingresar como invitado una vez</p>
-        <p style="font-size:0.78rem; color:#a86a00; margin-top:4px;">â  Obligatorio subir foto de tu INE</p>
+        <p style="font-size:0.78rem; color:#a86a00; margin-top:4px;">⚠ Obligatorio subir foto de tu INE</p>
         <span class="precio-badge gratis">GRATIS</span>
       </div>
     </div>
@@ -78,24 +78,24 @@
     <!-- Datos personales (boleto individual) -->
     <div id="individualFields">
       <label for="full_name" style="margin-top:18px;">Nombre completo</label>
-      <input type="text" id="full_name" name="full_name" placeholder="Ej. Juan PÃ©rez GarcÃ­a">
+      <input type="text" id="full_name" name="full_name" placeholder="Ej. Juan Pérez García">
 
-      <label for="email" style="margin-top:10px;display:block;">Correo electrónico <span style="color:#c0392b;">*</span></label>
+      <label for="email" style="margin-top:10px;display:block;">Correo electr�nico <span style="color:#c0392b;">*</span></label>
       <input type="email" id="email" name="email" required placeholder="tucorreo@ejemplo.com" style="width:100%;padding:8px 12px;border:1.5px solid #d1d5db;border-radius:6px;font-size:1rem;box-sizing:border-box;margin-bottom:4px;" />
-      <small style="color:#6b7280;display:block;margin-bottom:8px;">Se enviará tu código QR a este correo</small>
+      <small style="color:#6b7280;display:block;margin-bottom:8px;">Se enviar� tu c�digo QR a este correo</small>
 
-      <label for="platino">Â¿QuiÃ©n es tu Platino? <span style="color:#c0392b;">*</span></label>
+      <label for="platino">¿Quién es tu Platino? <span style="color:#c0392b;">*</span></label>
       <input type="text" id="platino" name="platino" placeholder="Nombre de tu Platino">
 
-      <label for="esmeralda">Â¿QuiÃ©n es tu Esmeralda? <span style="color:#c0392b;">*</span></label>
+      <label for="esmeralda">¿Quién es tu Esmeralda? <span style="color:#c0392b;">*</span></label>
       <input type="text" id="esmeralda" name="esmeralda" placeholder="Nombre de tu Esmeralda">
 
-      <label for="diamante">Â¿QuiÃ©n es tu Diamante? <span style="color:#c0392b;">*</span></label>
+      <label for="diamante">¿Quién es tu Diamante? <span style="color:#c0392b;">*</span></label>
       <input type="text" id="diamante" name="diamante" placeholder="Nombre de tu Diamante">
 
       <!-- Campos para Nuevo Empresario -->
       <div id="nuevoEmpresarioFields" style="display:none;">
-        <label for="auspicio_numero">NÃºmero de empresario (ID Amway)</label>
+        <label for="auspicio_numero">Número de empresario (ID Amway)</label>
         <input type="text" id="auspicio_numero" name="auspicio_numero" placeholder="Ej. 123456789">
 
         <label for="fecha_auspicio">Fecha en que te registraste como empresario</label>
@@ -160,7 +160,7 @@ function buildPersonasForm() {
     const div = document.createElement('div');
     div.className = 'persona-bloque';
     div.innerHTML = `
-      <p class="persona-label">ð¤ Persona ${i}</p>
+      <p class="persona-label">👤 Persona ${i}</p>
       <input type="text" class="p-name" placeholder="Nombre completo (nombre y apellido)" oninput="checkValid()">
       <input type="text" class="p-platino" placeholder="Platino" oninput="checkValid()">
       <input type="text" class="p-esmeralda" placeholder="Esmeralda" oninput="checkValid()">
@@ -170,10 +170,10 @@ function buildPersonasForm() {
   }
 }
 
-// Los precios en config son el TOTAL que paga el cliente (base + comisiÃ³n MP).
-// FÃ³rmula inversa: total = base Ã 1.041064 + 4.64  â  base = (total â 4.64) / 1.041064
+// Los precios en config son el TOTAL que paga el cliente (base + comisión MP).
+// Fórmula inversa: total = base × 1.041064 + 4.64  →  base = (total − 4.64) / 1.041064
 function getPriceBreakdown(total) {
-  // FÃ³rmula real MP: (total Ã 3.49% + $4 fijo) Ã 1.16 IVA
+  // Fórmula real MP: (total × 3.49% + $4 fijo) × 1.16 IVA
   const com = Math.round((total * 0.0349 + 4) * 1.16);
   const base = total - com;
   return { base, com };
@@ -186,39 +186,39 @@ function updatePrecioDisplay() {
   const s = 'font-size:0.72rem;font-weight:400;opacity:0.88;display:block;line-height:1.4;margin-top:2px;';
 
   if (type === 'nuevo_empresario' || type === 'invitado') {
-    label = 'Acceso gratuito â';
+    label = 'Acceso gratuito ✓';
     btn.textContent = 'Obtener boleto';
     const refTotal = cfg.early_bird_active ? (Number(cfg.early_bird_precio) || 421) : (cfg.precio || 473);
     const { base: refBase } = getPriceBreakdown(refTotal);
-    document.getElementById('precioEmpresario').textContent = '$' + refBase + (cfg.early_bird_active ? ' ð' : '');
+    document.getElementById('precioEmpresario').textContent = '$' + refBase + (cfg.early_bird_active ? ' 🎉' : '');
   } else if (type === 'paquete_grupo') {
     const total = cfg.precio_paquete || 1462;
     const { base: pp, com } = getPriceBreakdown(total);
     const perPerson = Number.isInteger(com / 4) ? (com / 4) : (com / 4).toFixed(1);
-    label = `Paquete Grupo: $${pp.toLocaleString()} + $${com} comisiÃ³n de la plataforma de cobro ð`;
-    btn.textContent = 'Continuar al pago â Paquete Grupo';
+    label = `Paquete Grupo: $${pp.toLocaleString()} + $${com} comisión de la plataforma de cobro 🎟`;
+    btn.textContent = 'Continuar al pago — Paquete Grupo';
     document.getElementById('precioPaquete').innerHTML =
-      `$${pp.toLocaleString()} <span style="${s}">+ ($${com} comisiÃ³n de la plataforma de cobro<br>Â· $${perPerson} por persona)</span>`;
+      `$${pp.toLocaleString()} <span style="${s}">+ ($${com} comisión de la plataforma de cobro<br>· $${perPerson} por persona)</span>`;
   } else {
     if (cfg.early_bird_active) {
       const total = Number(cfg.early_bird_precio) || 421;
       const { base: ep, com } = getPriceBreakdown(total);
-      label = `Precio especial (early bird): $${ep} + $${com} comisiÃ³n de la plataforma de cobro ð`;
+      label = `Precio especial (early bird): $${ep} + $${com} comisión de la plataforma de cobro 🎉`;
       document.getElementById('precioEmpresario').innerHTML =
-        `$${ep} ð <span style="${s}">+ ($${com} comisiÃ³n de la plataforma de cobro)</span>`;
+        `$${ep} 🎉 <span style="${s}">+ ($${com} comisión de la plataforma de cobro)</span>`;
     } else {
       const total = cfg.precio || 473;
       const { base: pr, com } = getPriceBreakdown(total);
-      label = `Costo del boleto: $${pr} + $${com} comisiÃ³n de la plataforma de cobro`;
+      label = `Costo del boleto: $${pr} + $${com} comisión de la plataforma de cobro`;
       document.getElementById('precioEmpresario').innerHTML =
-        `$${pr} <span style="${s}">+ ($${com} comisiÃ³n de la plataforma de cobro)</span>`;
+        `$${pr} <span style="${s}">+ ($${com} comisión de la plataforma de cobro)</span>`;
     }
     btn.textContent = 'Continuar al pago';
   }
   document.getElementById('precioInfo').textContent = label;
 }
 
-// SelecciÃ³n de tipo
+// Selección de tipo
 document.getElementById('typeGrid').addEventListener('click', e => {
   const card = e.target.closest('.type-card');
   if (!card) return;
@@ -237,7 +237,7 @@ document.getElementById('typeGrid').addEventListener('click', e => {
   checkValid();
 });
 
-// Preview de imÃ¡genes
+// Preview de imágenes
 function setupPreview(inputId, previewId) {
   document.getElementById(inputId).addEventListener('change', function() {
     const prev = document.getElementById(previewId);
@@ -287,7 +287,7 @@ function checkValid() {
     if (esmeralda.length <= 1) pendientes.push('Esmeralda');
     if (diamante.length <= 1)  pendientes.push('Diamante');
     if (type === 'nuevo_empresario') {
-      if (document.getElementById('auspicio_numero').value.trim().length <= 2) pendientes.push('NÃºmero de empresario');
+      if (document.getElementById('auspicio_numero').value.trim().length <= 2) pendientes.push('Número de empresario');
       if (document.getElementById('comprobante').files.length === 0) pendientes.push('Comprobante de auspicio');
       if (document.getElementById('ine_nuevo').files.length === 0) pendientes.push('Foto de INE');
     }
