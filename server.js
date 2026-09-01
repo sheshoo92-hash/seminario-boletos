@@ -197,7 +197,7 @@ app.post('/api/register', uploadDocs.fields([
       const registrosExistentes = db.getNuevoSociosPorNumero(auspicio_numero.trim());
       const nombreNorm = full_name.trim().toLowerCase().replace(/\s+/g, ' ');
 
-      // FunciÃÂÃÂ³n para detectar si dos nombres son similares (uno contiene al otro)
+      // Función para detectar si dos nombres son similares (uno contiene al otro)
       const nombresSimilares = (a, b) => {
         if (a === b) return true;
         if (a.includes(b) || b.includes(a)) return true;
@@ -212,7 +212,7 @@ app.post('/api/register', uploadDocs.fields([
         registrosExistentes.map(r => (r.full_name || '').trim().toLowerCase().replace(/\s+/g, ' '))
       )].filter(n => !nombresSimilares(n, nombreNorm));
 
-      // Regla 1: esta persona ya usÃÂÃÂ³ sus 2 eventos gratis
+      // Regla 1: esta persona ya usó sus 2 eventos gratis
       if (registrosMismaPersna.length >= 2) {
         return res.status(400).json({ error: 'Ya usaste tus 2 eventos gratuitos como Nuevo Empresario. Debes comprar un boleto de Empresario.' });
       }
@@ -230,19 +230,19 @@ app.post('/api/register', uploadDocs.fields([
       }
       ine_image = req.files.ine_nuevo[0].filename;
       amount = 0; // gratis
-      if (cfg.early_bird_active) early_bird = true; // Ticket Holder si se registrÃÂÃÂ³ durante el evento
+      if (cfg.early_bird_active) early_bird = true; // Ticket Holder si se registró durante el evento
 
     } else if (type === 'invitado') {
       const existing = db.getInvitadoByNombre(full_name.trim());
       if (existing) {
-        return res.status(400).json({ error: 'Ya existe un registro de este invitado. Los invitados sÃÂÃÂ³lo pueden asistir gratuitamente una sola vez.' });
+        return res.status(400).json({ error: 'Ya existe un registro de este invitado. Los invitados sólo pueden asistir gratuitamente una sola vez.' });
       }
       if (!req.files || !req.files.ine_photo) {
         return res.status(400).json({ error: 'Debes subir una foto de tu INE' });
       }
       ine_image = req.files.ine_photo[0].filename;
       amount = 0; // acceso gratuito
-      if (cfg.early_bird_active) early_bird = true; // Ticket Holder si se registrÃÂÃÂ³ durante el evento
+      if (cfg.early_bird_active) early_bird = true; // Ticket Holder si se registró durante el evento
 
     } else { // empresario
       if (cfg.early_bird_active) {
@@ -559,7 +559,7 @@ app.get('/api/admin/search', (req, res) => {
   res.json(db.searchByName(q).filter(a => a.payment_status === 'pagado'));
 });
 
-// ---------- ADMIN: configuraciÃÂÃÂ³n ----------
+// ---------- ADMIN: configuración ----------
 app.get('/api/admin/config', (req, res) => {
   res.json(getEventConfig());
 });
@@ -579,7 +579,7 @@ app.post('/api/admin/config', uploadFlyer.single('flyer'), (req, res) => {
     res.json({ ok: true, config: getEventConfig() });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'No se pudo guardar la configuraciÃÂÃÂ³n' });
+    res.status(500).json({ error: 'No se pudo guardar la configuración' });
   }
 });
 // ---------- ADMIN: reiniciar evento ----------
@@ -625,8 +625,8 @@ app.get('/api/admin/export', (req, res) => {
   const headers = [
     'NÃÂÃÂ° Boleto', 'Nombre completo', 'Tipo de boleto', 'Platino', 'Esmeralda', 'Diamante',
     'NÃÂÃÂ° Empresario', 'Fecha auspicio', 'Early Bird', 'Monto cobrado',
-    'ComisiÃÂÃÂ³n MP estimada', 'Ingreso neto', 'Estado de pago',
-    'EntrÃÂÃÂ³', 'Veces escaneado', 'Fecha/hora de entrada', 'TH Escaneado', 'Fecha TH', 'Registrado', 'Link Boleto'
+    'Comisión MP estimada', 'Ingreso neto', 'Estado de pago',
+    'Entró', 'Veces escaneado', 'Fecha/hora de entrada', 'TH Escaneado', 'Fecha TH', 'Registrado', 'Link Boleto'
   ];
 
   const tipoLabel = { empresario: 'Empresario', nuevo_empresario: 'Nuevo Empresario', invitado: 'Invitado' };
@@ -641,7 +641,7 @@ app.get('/api/admin/export', (req, res) => {
     } catch(e) { return iso; }
   };
 
-  // Ordenar por fecha de registro (ascendente) para que el nÃÂÃÂºmero sea cronolÃÂÃÂ³gico
+  // Ordenar por fecha de registro (ascendente) para que el nÃÂÃÂºmero sea cronológico
   const attendeesSorted = [...attendees].sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
   const rows = attendeesSorted.map((a, i) => {
     const monto = a.amount || 0;
@@ -710,7 +710,7 @@ app.get('/api/scanner/search', (req, res) => {
 app.post('/api/checkin', (req, res) => {
   const { ticket_code, modo } = req.body;
   console.log('[CHECKIN] modo recibido:', JSON.stringify(modo), '| code:', ticket_code);
-  if (!ticket_code) return res.status(400).json({ error: 'CÃÂÃÂ³digo de boleto requerido' });
+  if (!ticket_code) return res.status(400).json({ error: 'Código de boleto requerido' });
 
   const att = db.getByCode(ticket_code);
   if (!att) return res.status(404).json({ ok: false, reason: 'no_encontrado', message: 'Boleto no encontrado' });
