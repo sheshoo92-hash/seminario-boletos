@@ -1,4 +1,4 @@
-// deploy: 1787159999873
+// deploy: 1788285024117
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
@@ -7,7 +7,6 @@ const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
 const QRCode = require('qrcode');
 const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
-const nodemailer = require('nodemailer');
 const nodemailer = require('nodemailer');
 const db = require('./db');
 
@@ -107,7 +106,7 @@ async function sendResendEmail({ to, subject, html, attachments }) {
   }
 }
 async function sendTicketEmail(att) {
-  if (!process.env.RESEND_API_KEY || !att || !att.email) return;
+  if (!att || !att.email) return;
   try {
     const qrDataUrl = await QRCode.toDataURL(att.ticket_code, { width: 280, margin: 1 });
     const b64 = qrDataUrl.replace(/^data:image\/png;base64,/, '');
@@ -125,8 +124,7 @@ async function sendTicketEmail(att) {
 }
 
 async function sendPaqueteEmail(paqueteId) {
-  if (!process.env.RESEND_API_KEY) return;
-  try {
+    try {
     const attendees = db.getByPaqueteId(paqueteId);
     if (!attendees.length) return;
     const buyerEmail = attendees.find(a => a.email)?.email;
@@ -259,7 +257,6 @@ app.post('/api/register', uploadDocs.fields([
       platino: (platino || '').trim(),
       esmeralda: (esmeralda || '').trim(),
       diamante: (diamante || '').trim(),
-      email: (email || '').trim(),
       ticket_type: type,
       auspicio_numero: auspicio_numero ? String(auspicio_numero).trim() : null,
       fecha_auspicio: fecha_auspicio || null,
