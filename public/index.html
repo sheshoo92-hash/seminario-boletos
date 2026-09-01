@@ -335,10 +335,10 @@ document.getElementById('form').addEventListener('submit', async e => {
           diamante:  b.querySelector('.p-diamante').value.trim(),
         });
       });
+      const paqueteEmail = (document.getElementById('paquete_email')?.value || '').trim();
       const res = await fetch('/api/register-paquete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        const paqueteEmail = (document.getElementById('paquete_email')?.value || '').trim();
         body: JSON.stringify({ personas, email: paqueteEmail }),
       });
       const data = await res.json();
