@@ -84,6 +84,9 @@
       <input type="email" id="email" name="email" required placeholder="tucorreo@ejemplo.com" style="width:100%;padding:8px 12px;border:1.5px solid #d1d5db;border-radius:6px;font-size:1rem;box-sizing:border-box;margin-bottom:4px;" />
       <small style="color:#6b7280;display:block;margin-bottom:8px;">Se enviará tu código QR a este correo</small>
 
+      <label for="email" style="margin-top:10px;">Correo electrónico <span style="color:#c0392b;">*</span></label>
+      <input type="email" id="email" name="email" placeholder="tu@correo.com">
+
       <label for="platino">¿Quién es tu Platino? <span style="color:#c0392b;">*</span></label>
       <input type="text" id="platino" name="platino" placeholder="Nombre de tu Platino">
 
@@ -123,7 +126,9 @@
       <label for="paquete_email" style="display:block;margin-bottom:4px;font-weight:700;">Correo electrónico del comprador <span style="color:#c0392b;">*</span></label>
       <input type="email" id="paquete_email" placeholder="tucorreo@ejemplo.com" oninput="checkValid()" style="width:100%;padding:8px 12px;border:1.5px solid #d1d5db;border-radius:6px;font-size:1rem;box-sizing:border-box;margin-bottom:4px;">
       <small style="color:#6b7280;display:block;margin-bottom:14px;">Se enviarán los 4 códigos QR a este correo</small>
-      <p style="color:#7c3aed; font-weight:700; margin-bottom:10px;">Datos de las 4 personas del grupo:</p>
+      <label for="paquete_email">Correo electrónico (recibirás los 4 QRs) <span style="color:#c0392b;">*</span></label>
+      <input type="email" id="paquete_email" placeholder="tu@correo.com" oninput="checkValid()">
+      <p style="color:#7c3aed; font-weight:700; margin:12px 0 10px;">Datos de las 4 personas del grupo:</p>
       <div id="personasContainer"></div>
     </div>
 
@@ -255,7 +260,7 @@ setupPreview('comprobante', 'comprobantePreview');
 setupPreview('ine_photo', 'inePreview');
 setupPreview('ine_nuevo', 'ineNuevoPreview');
 
-['full_name','platino','esmeralda','diamante','auspicio_numero'].forEach(id =>
+['full_name','email','platino','esmeralda','diamante','auspicio_numero'].forEach(id =>
   document.getElementById(id).addEventListener('input', checkValid)
 );
 document.getElementById('comprobante').addEventListener('change', checkValid);
@@ -269,6 +274,8 @@ function checkValid() {
   const pendientes = [];
 
   if (type === 'paquete_grupo') {
+    const paqEmailVal = document.getElementById('paquete_email').value.trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(paqEmailVal)) pendientes.push('Correo electrónico');
     const bloques = document.querySelectorAll('.persona-bloque');
     bloques.forEach((b, i) => {
       const name = b.querySelector('.p-name').value.trim();
@@ -282,10 +289,12 @@ function checkValid() {
     });
   } else {
     const name     = document.getElementById('full_name').value.trim();
+    const emailVal = document.getElementById('email').value.trim();
     const platino  = document.getElementById('platino').value.trim();
     const esmeralda= document.getElementById('esmeralda').value.trim();
     const diamante = document.getElementById('diamante').value.trim();
     if (name.split(/\s+/).length < 2 || name.length <= 4) pendientes.push('Nombre completo (nombre y apellido)');
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailVal)) pendientes.push('Correo electrónico');
     if (platino.length <= 1)   pendientes.push('Platino');
     if (esmeralda.length <= 1) pendientes.push('Esmeralda');
     if (diamante.length <= 1)  pendientes.push('Diamante');
