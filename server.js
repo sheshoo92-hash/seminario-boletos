@@ -119,7 +119,7 @@ async function sendTicketEmail(att) {
     await sendResendEmail({
       to: att.email,
       subject: 'Tu boleto ' + num + ' para ' + evtName,
-      html: '<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;border:1px solid #e0e0e0;border-radius:14px;"><h2 style="color:#1c3a6e;text-align:center;">' + evtName + '</h2><p style="text-align:center;color:#666;">¡Tu pago fue confirmado!</p><p>Hola <strong>' + att.full_name + '</strong>,</p><p>Aquí está tu código QR de acceso:</p><div style="text-align:center;margin:24px 0;"><img src="' + qrDataUrl + '" alt="QR" style="width:220px;height:220px;border:4px solid #1c3a6e;border-radius:12px;"></div>' + (att.ticket_number ? '<p style="text-align:center;font-weight:bold;color:#1c3a6e;">Boleto ' + num + '</p>' : '') + '<p style="text-align:center;"><a href="' + ticketUrl + '" style="background:#1c3a6e;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">Ver mi boleto digital Ã¢ÂÂ</a></p><p style="color:#999;font-size:0.82rem;text-align:center;margin-top:20px;">Presenta este QR en la entrada del evento.</p></div>',
+      html: '<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;border:1px solid #e0e0e0;border-radius:14px;"><h2 style="color:#1c3a6e;text-align:center;">' + evtName + '</h2><p style="text-align:center;color:#666;">¡Tu pago fue confirmado!</p><p>Hola <strong>' + att.full_name + '</strong>,</p><p>Aquí está tu código QR de acceso:</p><div style="text-align:center;margin:24px 0;"><img src="' + qrDataUrl + '" alt="QR" style="width:220px;height:220px;border:4px solid #1c3a6e;border-radius:12px;"></div>' + (att.ticket_number ? '<p style="text-align:center;font-weight:bold;color:#1c3a6e;">Boleto ' + num + '</p>' : '') + '<p style="text-align:center;"><a href="' + ticketUrl + '" style="background:#1c3a6e;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">Ver mi boleto digital →</a></p><p style="color:#999;font-size:0.82rem;text-align:center;margin-top:20px;">Presenta este QR en la entrada del evento.</p></div>',
       attachments: [],
     });
     console.log('[EMAIL] Enviado a', att.email);
@@ -143,7 +143,7 @@ async function sendPaqueteEmail(paqueteId) {
         '<p style="margin:0 0 6px;font-weight:700;color:#7c3aed;">' + att.full_name + '</p>' +
         (att.ticket_number ? '<p style="margin:0 0 8px;color:#1c3a6e;font-weight:700;">Boleto ' + num + '</p>' : '') +
         '<img src="' + qrDataUrl + '" alt="QR" style="width:180px;height:180px;border:3px solid #7c3aed;border-radius:10px;display:block;margin:0 auto 10px;">' +
-        '<a href="' + ticketUrl + '" style="background:#7c3aed;color:#fff;padding:8px 20px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:0.9rem;">Ver boleto Ã¢ÂÂ</a></div>';
+        '<a href="' + ticketUrl + '" style="background:#7c3aed;color:#fff;padding:8px 20px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:0.9rem;">Ver boleto →</a></div>';
     }
     await sendResendEmail({
       to: buyerEmail,
