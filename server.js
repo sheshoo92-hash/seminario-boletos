@@ -56,6 +56,8 @@ const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(__dirname, 'uploads');
 const DOCS_DIR = path.join(UPLOADS_DIR, 'docs');
 try { require('fs').mkdirSync(UPLOADS_DIR, {recursive:true}); require('fs').mkdirSync(DOCS_DIR, {recursive:true}); } catch(e){}
 
+app.use('/uploads', express.static(UPLOADS_DIR));
+
 const uploadFlyer = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => cb(null, UPLOADS_DIR),
@@ -244,6 +246,21 @@ app.post('/api/register-paquete', async (req, res) => {
 });
 
 // ---------- Consultar paquete grupo ----------
+app.get('/api/config', (req, res) => {
+  const cfg = getEventConfig();
+  res.json({
+    eventName:         cfg.eventName,
+    eventDate:         cfg.eventDate,
+    precio:            cfg.early_bird_active ? cfg.early_bird_precio : cfg.precio,
+    precio_normal:     cfg.precio,
+    precio_paquete:    cfg.precio_paquete,
+    early_bird_active: cfg.early_bird_active,
+    early_bird_precio: cfg.early_bird_precio,
+    flyer:             cfg.flyer ? `/uploads/${cfg.flyer}` : null,
+    mpEnabled:         !!mpClient,
+  });
+});
+
 app.get('/api/paquete/:id', async (req, res) => {
   const attendees = db.getByPaqueteId(req.params.id);
   if (!attendees.length) return res.status(404).json({ error: 'Paquete no encontrado' });
