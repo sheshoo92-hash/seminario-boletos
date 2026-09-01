@@ -57,6 +57,41 @@ async function sendTicketEmail(att) {
   } catch(err) { console.error('[EMAIL] Error:', err.message); }
 }
 
+async function sendPaqueteEmail(paqueteId) {
+  if (!emailTransporter) return;
+  try {
+    const attendees = db.getByPaqueteId(paqueteId);
+    if (!attendees.length) return;
+    const buyerEmail = attendees.find(a => a.email)?.email;
+    if (!buyerEmail) return;
+    const evtName = EVENT_NAME_DEFAULT;
+    const qrAttachments = [];
+    let ticketRows = '';
+    for (let i = 0; i < attendees.length; i++) {
+      const att = attendees[i];
+      const qrDataUrl = await QRCode.toDataURL(att.ticket_code, { width: 220, margin: 1 });
+      const b64 = qrDataUrl.replace(/^data:image\/png;base64,/, '');
+      const cid = 'qr' + i;
+      qrAttachments.push({ filename: 'qr-boleto-' + (i+1) + '.png', content: b64, encoding: 'base64', cid });
+      const ticketUrl = BASE_URL + '/ticket.html?code=' + att.ticket_code;
+      const num = att.ticket_number ? '#' + att.ticket_number : '';
+      ticketRows += '<div style="border:1px solid #d8c5ff;border-radius:10px;padding:14px;margin-bottom:16px;text-align:center;">' +
+        '<p style="margin:0 0 6px;font-weight:700;color:#7c3aed;">' + att.full_name + '</p>' +
+        (att.ticket_number ? '<p style="margin:0 0 8px;color:#1c3a6e;font-weight:700;">Boleto ' + num + '</p>' : '') +
+        '<img src="cid:' + cid + '" alt="QR" style="width:180px;height:180px;border:3px solid #7c3aed;border-radius:10px;display:block;margin:0 auto 10px;">' +
+        '<a href="' + ticketUrl + '" style="background:#7c3aed;color:#fff;padding:8px 20px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:0.9rem;">Ver boleto →</a></div>';
+    }
+    await emailTransporter.sendMail({
+      from: '"' + evtName + '" <' + process.env.EMAIL_USER + '>',
+      to: buyerEmail,
+      subject: 'Tus 4 boletos para ' + evtName + ' — Paquete Grupo',
+      html: '<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;border:1px solid #e0e0e0;border-radius:14px;"><h2 style="color:#7c3aed;text-align:center;">' + evtName + '</h2><p style="text-align:center;color:#666;">¡Pago del Paquete Grupo confirmado! Aquí están los 4 boletos:</p>' + ticketRows + '<p style="color:#999;font-size:0.82rem;text-align:center;margin-top:20px;">Guarda este correo — es el acceso de tu grupo al evento.</p></div>',
+      attachments: qrAttachments,
+    });
+    console.log('[EMAIL-PAQUETE] Enviado a', buyerEmail);
+  } catch(err) { console.error('[EMAIL-PAQUETE] Error:', err.message); }
+}
+
 // ---------- Directorios de uploads ----------
 const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(__dirname, 'public', 'uploads');
 const DOCS_DIR = path.join(UPLOADS_DIR, 'docs');
@@ -307,7 +342,8 @@ app.post('/api/register', uploadDocs.fields([
 // ---------- Registro Paquete Grupo (4 boletos por $1400) ----------
 app.post('/api/register-paquete', async (req, res) => {
   try {
-    const { personas } = req.body;
+    const { personas, email } = req.body;
+    const emailClean = email ? String(email).trim().toLowerCase() : null;
     if (!Array.isArray(personas) || personas.length !== 4) {
       return res.status(400).json({ error: 'Se requieren exactamente 4 personas' });
     }
@@ -351,6 +387,8 @@ app.post('/api/register-paquete', async (req, res) => {
         checked_in: false,
         checked_in_count: 0,
         checked_in_at: null,
+        email: emailClean,
+        email_sent: false,
         created_at: new Date().toISOString(),
       });
       ticket_codes.push(ticket_code);
@@ -361,6 +399,7 @@ app.post('/api/register-paquete', async (req, res) => {
       for (const code of ticket_codes) {
         db.updateByCode(code, { payment_status: 'pagado', ticket_number: db.getNextTicketNumber() });
       }
+      sendPaqueteEmail(paquete_id).catch(() => {});
       return res.json({ demo: true, paquete_id, redirect: `/paquete.html?id=${paquete_id}` });
     }
 
@@ -430,6 +469,7 @@ app.post('/api/webhook/mercadopago', async (req, res) => {
             if (!att.ticket_number) updates.ticket_number = db.getNextTicketNumber();
             db.updateByCode(att.ticket_code, updates);
           }
+          sendPaqueteEmail(paqId).catch(() => {});
         } else {
           const existing = db.getByCode(ref);
           const updates = { payment_status: 'pagado', mp_payment_id: String(info.id) };
