@@ -8,6 +8,7 @@ const { v4: uuidv4 } = require('uuid');
 const QRCode = require('qrcode');
 const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
 const nodemailer = require('nodemailer');
+const nodemailer = require('nodemailer');
 const db = require('./db');
 
 const app = express();
@@ -81,25 +82,30 @@ if (process.env.MP_ACCESS_TOKEN && process.env.MP_ACCESS_TOKEN !== 'TU_ACCESS_TO
 
 // ---------- Email (Resend) ----------
 async function sendResendEmail({ to, subject, html, attachments }) {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) { console.log('[EMAIL] No RESEND_API_KEY'); return null; }
-  const evtName = EVENT_NAME_DEFAULT;
-  const resp = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from: evtName + ' <onboarding@resend.dev>',
-      to: Array.isArray(to) ? to : [to],
+  const gmailUser = process.env.GMAIL_USER;
+  const gmailPass = process.env.GMAIL_PASS;
+  if (!gmailUser || !gmailPass) { console.log('[EMAIL] No GMAIL_USER/GMAIL_PASS'); return null; }
+  try {
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false,
+      auth: { user: gmailUser, pass: gmailPass },
+    });
+    const info = await transporter.sendMail({
+      from: '"Seminario de Negocios" <' + gmailUser + '>',
+      to,
       subject,
       html,
-      attachments: attachments || [],
-    })
-  });
-  const data = await resp.json();
-  if (!resp.ok) throw new Error(JSON.stringify(data));
-  return data;
+      attachments,
+    });
+    console.log('[EMAIL] Sent:', info.messageId);
+    return info;
+  } catch (err) {
+    console.error('[EMAIL] Error:', err.message);
+    return null;
+  }
 }
-
 async function sendTicketEmail(att) {
   if (!process.env.RESEND_API_KEY || !att || !att.email) return;
   try {
