@@ -119,7 +119,7 @@ async function sendTicketEmail(att) {
     await sendResendEmail({
       to: att.email,
       subject: 'Tu boleto ' + num + ' para ' + evtName,
-      html: '<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;border:1px solid #e0e0e0;border-radius:14px;"><h2 style="color:#1c3a6e;text-align:center;">' + evtName + '</h2><p style="text-align:center;color:#666;">ÃÂ¡Tu pago fue confirmado!</p><p>Hola <strong>' + att.full_name + '</strong>,</p><p>AquÃÂ­ estÃÂ¡ tu cÃÂ³digo QR de acceso:</p><div style="text-align:center;margin:24px 0;"><img src="' + qrDataUrl + '" alt="QR" style="width:220px;height:220px;border:4px solid #1c3a6e;border-radius:12px;"></div>' + (att.ticket_number ? '<p style="text-align:center;font-weight:bold;color:#1c3a6e;">Boleto ' + num + '</p>' : '') + '<p style="text-align:center;"><a href="' + ticketUrl + '" style="background:#1c3a6e;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">Ver mi boleto digital Ã¢ÂÂ</a></p><p style="color:#999;font-size:0.82rem;text-align:center;margin-top:20px;">Presenta este QR en la entrada del evento.</p></div>',
+      html: '<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;border:1px solid #e0e0e0;border-radius:14px;"><h2 style="color:#1c3a6e;text-align:center;">' + evtName + '</h2><p style="text-align:center;color:#666;">¡Tu pago fue confirmado!</p><p>Hola <strong>' + att.full_name + '</strong>,</p><p>Aquí está tu código QR de acceso:</p><div style="text-align:center;margin:24px 0;"><img src="' + qrDataUrl + '" alt="QR" style="width:220px;height:220px;border:4px solid #1c3a6e;border-radius:12px;"></div>' + (att.ticket_number ? '<p style="text-align:center;font-weight:bold;color:#1c3a6e;">Boleto ' + num + '</p>' : '') + '<p style="text-align:center;"><a href="' + ticketUrl + '" style="background:#1c3a6e;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">Ver mi boleto digital Ã¢ÂÂ</a></p><p style="color:#999;font-size:0.82rem;text-align:center;margin-top:20px;">Presenta este QR en la entrada del evento.</p></div>',
       attachments: [],
     });
     console.log('[EMAIL] Enviado a', att.email);
@@ -148,7 +148,7 @@ async function sendPaqueteEmail(paqueteId) {
     await sendResendEmail({
       to: buyerEmail,
       subject: 'Tus 4 boletos para ' + evtName + ' Ã¢ÂÂ Paquete Grupo',
-      html: '<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;border:1px solid #e0e0e0;border-radius:14px;"><h2 style="color:#7c3aed;text-align:center;">' + evtName + '</h2><p style="text-align:center;color:#666;">ÃÂ¡Pago del Paquete Grupo confirmado!</p>' + ticketRows + '<p style="color:#999;font-size:0.82rem;text-align:center;margin-top:20px;">Guarda este correo Ã¢ÂÂ es el acceso de tu grupo al evento.</p></div>',
+      html: '<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;border:1px solid #e0e0e0;border-radius:14px;"><h2 style="color:#7c3aed;text-align:center;">' + evtName + '</h2><p style="text-align:center;color:#666;">¡Pago del Paquete Grupo confirmado!</p>' + ticketRows + '<p style="color:#999;font-size:0.82rem;text-align:center;margin-top:20px;">Guarda este correo Ã¢ÂÂ es el acceso de tu grupo al evento.</p></div>',
       attachments: [],
     });
     console.log('[EMAIL-PAQUETE] Enviado a', buyerEmail);
@@ -173,7 +173,7 @@ app.post('/api/register', uploadDocs.fields([
 
     const type = ticket_type || 'empresario';
     if (!['empresario', 'nuevo_empresario', 'invitado'].includes(type)) {
-      return res.status(400).json({ error: 'Tipo de boleto invÃÂÃÂ¡lido' });
+      return res.status(400).json({ error: 'Tipo de boleto invÃÂ¡lido' });
     }
 
     const cfg = getEventConfig();
@@ -219,7 +219,7 @@ app.post('/api/register', uploadDocs.fields([
 
       // Regla 2: el nÃÂÃÂºmero ya tiene 2 personas distintas y esta persona es una tercera
       if (personasUnicas.length >= 2 && registrosMismaPersna.length === 0) {
-        return res.status(400).json({ error: 'Este nÃÂÃÂºmero de empresario ya tiene registrados al titular y cotitular. No se permiten mÃÂÃÂ¡s registros gratuitos con este nÃÂÃÂºmero.' });
+        return res.status(400).json({ error: 'Este nÃÂÃÂºmero de empresario ya tiene registrados al titular y cotitular. No se permiten mÃÂ¡s registros gratuitos con este nÃÂÃÂºmero.' });
       }
       if (!req.files || !req.files.comprobante) {
         return res.status(400).json({ error: 'Debes subir el comprobante de tu fecha de auspicio' });
@@ -281,7 +281,7 @@ app.post('/api/register', uploadDocs.fields([
 
     db.insertAttendee(record);
 
-    // Gratis (nuevo_empresario): marcar pagado directo y asignar nÃÂºmero
+    // Gratis (nuevo_empresario): marcar pagado directo y asignar número
     if (amount === 0) {
       db.updateByCode(ticket_code, { payment_status: 'pagado', ticket_number: db.getNextTicketNumber() });
       sendTicketEmail(db.getByCode(ticket_code)).catch(() => {});
@@ -613,7 +613,7 @@ app.get('/api/admin/export', (req, res) => {
   }
 
   const cfg = getEventConfig();
-  // ComisiÃÂ³n real MP: (monto ÃÂ 3.49% + $4 fijo) ÃÂ 1.16 IVA
+  // Comisión real MP: (monto ÃÂ 3.49% + $4 fijo) ÃÂ 1.16 IVA
   // Para paquetes el cargo fijo aplica una sola vez al total de 4 personas
   const calcComisionMP = (a) => {
     const m = a.amount || 0;
@@ -623,8 +623,8 @@ app.get('/api/admin/export', (req, res) => {
   };
 
   const headers = [
-    'NÃÂÃÂ° Boleto', 'Nombre completo', 'Tipo de boleto', 'Platino', 'Esmeralda', 'Diamante',
-    'NÃÂÃÂ° Empresario', 'Fecha auspicio', 'Early Bird', 'Monto cobrado',
+    'NÃÂ° Boleto', 'Nombre completo', 'Tipo de boleto', 'Platino', 'Esmeralda', 'Diamante',
+    'NÃÂ° Empresario', 'Fecha auspicio', 'Early Bird', 'Monto cobrado',
     'Comisión MP estimada', 'Ingreso neto', 'Estado de pago',
     'Entró', 'Veces escaneado', 'Fecha/hora de entrada', 'TH Escaneado', 'Fecha TH', 'Registrado', 'Link Boleto'
   ];
@@ -686,13 +686,13 @@ app.get('/api/admin/export', (req, res) => {
   const csv = [headers, ...rows].map(r => r.map(csvEscape).join(',')).join('\n');
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${nombreArchivo}.csv"`);
-  res.send('ÃÂ¯ÃÂ»ÃÂ¿' + csv);
+  res.send('ÃÂ¯ÃÂ»¿' + csv);
 });
 
-// ---------- CHECK-IN (escÃÂÃÂ¡ner de puerta) ----------
+// ---------- CHECK-IN (escÃÂ¡ner de puerta) ----------
 // modo: 'ticket_holder' = registro previo (solo early bird) | 'evento' = dÃÂÃÂ­a del seminario (default)
 // TH y evento son conteos INDEPENDIENTES para que no se interfieran.
-// Endpoint pÃÂÃÂºblico de bÃÂÃÂºsqueda para escÃÂÃÂ¡neres (sin datos sensibles)
+// Endpoint pÃÂÃÂºblico de bÃÂÃÂºsqueda para escÃÂ¡neres (sin datos sensibles)
 app.get('/api/scanner/search', (req, res) => {
   const q = req.query.q || '';
   if (q.trim().length < 2) return res.json([]);
@@ -747,7 +747,7 @@ app.post('/api/checkin', (req, res) => {
   res.json({ ok: true, message: 'Acceso permitido ÃÂ¢ÃÂÃÂ', attendee: enrichAttendee(updated) });
 });
 
-// Agrega URLs de imÃÂÃÂ¡genes al objeto de asistente
+// Agrega URLs de imÃÂ¡genes al objeto de asistente
 function enrichAttendee(att) {
   return {
     ...att,
