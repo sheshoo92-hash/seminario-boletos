@@ -758,6 +758,17 @@ function enrichAttendee(att) {
 
 
 
+// ---- Test email ----
+app.get('/api/test-email', async (req, res) => {
+  if (!emailTransporter) return res.json({ ok: false, error: 'No transporter (EMAIL_USER/PASS not set)', EMAIL_USER: process.env.EMAIL_USER || 'not set' });
+  try {
+    await emailTransporter.verify();
+    res.json({ ok: true, message: 'Transporter verified OK', EMAIL_USER: process.env.EMAIL_USER });
+  } catch(err) {
+    res.json({ ok: false, error: err.message, code: err.code });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en ${BASE_URL} (puerto ${PORT})`);
 });
