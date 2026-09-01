@@ -27,6 +27,31 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin';
 const EVENT_NAME_DEFAULT = process.env.EVENT_NAME || 'Seminario Amway';
 const PRECIO_DEFAULT = parseInt(process.env.PRECIO_BOLETO || '450', 10);
 
+function getEventConfig() {
+  const cfg = db.getConfig();
+  return {
+    eventName:        cfg.eventName        || EVENT_NAME_DEFAULT,
+    eventDate:        cfg.eventDate        || '',
+    precio:           cfg.precio           != null ? cfg.precio           : PRECIO_DEFAULT,
+    early_bird_active: cfg.early_bird_active || false,
+    early_bird_precio: cfg.early_bird_precio != null ? cfg.early_bird_precio : 400,
+    comision_mp:      cfg.comision_mp      != null ? cfg.comision_mp      : 3.49,
+    precio_paquete:   cfg.precio_paquete   != null ? cfg.precio_paquete   : 1400,
+    flyer:            cfg.flyer            || null,
+  };
+}
+
+function requireAdmin(req, res, next) {
+  const pass = req.headers['x-admin-password'] || req.query.password;
+  if (pass !== ADMIN_PASSWORD) return res.status(401).json({ error: 'No autorizado' });
+  next();
+}
+
+function maxCheckins(att) {
+  return att.early_bird ? 2 : 1;
+}
+
+
 const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(__dirname, 'uploads');
 const DOCS_DIR = path.join(UPLOADS_DIR, 'docs');
 try { require('fs').mkdirSync(UPLOADS_DIR, {recursive:true}); require('fs').mkdirSync(DOCS_DIR, {recursive:true}); } catch(e){}
