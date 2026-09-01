@@ -1,4 +1,4 @@
-// deploy: 1788285024117
+// deploy: 1788287134619
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
@@ -87,8 +87,9 @@ async function sendResendEmail({ to, subject, html, attachments }) {
   try {
     const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
-      port: 587,
-      secure: false,
+      port: 465,
+      secure: true,
+        tls: { rejectUnauthorized: false },
       auth: { user: gmailUser, pass: gmailPass },
     });
     const info = await transporter.sendMail({
