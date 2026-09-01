@@ -1,4 +1,4 @@
-// deploy: 1788287134619
+// deploy: 1788290893920
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
@@ -79,28 +79,28 @@ if (process.env.MP_ACCESS_TOKEN && process.env.MP_ACCESS_TOKEN !== 'TU_ACCESS_TO
   mpClient = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
 }
 
-// ---------- Email (Resend) ----------
-async function sendResendEmail({ to, subject, html, attachments }) {
-  const gmailUser = process.env.GMAIL_USER;
-  const gmailPass = process.env.GMAIL_PASS;
-  if (!gmailUser || !gmailPass) { console.log('[EMAIL] No GMAIL_USER/GMAIL_PASS'); return null; }
+// ---------- Email (Resend HTTP API) ----------
+async function sendResendEmail({ to, subject, html }) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) { console.log('[EMAIL] No RESEND_API_KEY'); return null; }
   try {
-    const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
-        tls: { rejectUnauthorized: false },
-      auth: { user: gmailUser, pass: gmailPass },
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'Seminario de Negocios <onboarding@resend.dev>',
+        to: [to],
+        subject,
+        html,
+      }),
     });
-    const info = await transporter.sendMail({
-      from: '"Seminario de Negocios" <' + gmailUser + '>',
-      to,
-      subject,
-      html,
-      attachments,
-    });
-    console.log('[EMAIL] Sent:', info.messageId);
-    return info;
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.message || 'Resend error ' + r.status);
+    console.log('[EMAIL] Sent:', d.id);
+    return d;
   } catch (err) {
     console.error('[EMAIL] Error:', err.message);
     return null;
