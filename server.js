@@ -27,6 +27,26 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin';
 const EVENT_NAME_DEFAULT = process.env.EVENT_NAME || 'Seminario Amway';
 const PRECIO_DEFAULT = parseInt(process.env.PRECIO_BOLETO || '450', 10);
 
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(__dirname, 'uploads');
+const DOCS_DIR = path.join(UPLOADS_DIR, 'docs');
+try { require('fs').mkdirSync(UPLOADS_DIR, {recursive:true}); require('fs').mkdirSync(DOCS_DIR, {recursive:true}); } catch(e){}
+
+const uploadFlyer = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, UPLOADS_DIR),
+    filename: (req, file, cb) => cb(null, 'flyer' + path.extname(file.originalname)),
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
+
+const uploadDocs = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, DOCS_DIR),
+    filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname),
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
+
 let mpClient = null;
 if (process.env.MP_ACCESS_TOKEN && process.env.MP_ACCESS_TOKEN !== 'TU_ACCESS_TOKEN_AQUI') {
   mpClient = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
@@ -339,23 +359,6 @@ app.post('/api/admin/config', uploadFlyer.single('flyer'), (req, res) => {
     res.status(500).json({ error: 'No se pudo guardar la configuraciÃ³n' });
   }
 });
-
-const uploadFlyer = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => cb(null, UPLOADS_DIR),
-    filename: (req, file, cb) => cb(null, 'flyer' + path.extname(file.originalname)),
-  }),
-  limits: { fileSize: 10 * 1024 * 1024 },
-});
-
-const uploadDocs = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => cb(null, DOCS_DIR),
-    filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname),
-  }),
-  limits: { fileSize: 10 * 1024 * 1024 },
-});
-
 // ---------- ADMIN: reiniciar evento ----------
 app.post('/api/admin/reset', (req, res) => {
   try {
