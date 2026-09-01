@@ -340,7 +340,7 @@ app.post('/api/admin/config', uploadFlyer.single('flyer'), (req, res) => {
   }
 });
 
-const const uploadFlyer = multer({
+const uploadFlyer = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => cb(null, UPLOADS_DIR),
     filename: (req, file, cb) => cb(null, 'flyer' + path.extname(file.originalname)),
@@ -348,7 +348,7 @@ const const uploadFlyer = multer({
   limits: { fileSize: 10 * 1024 * 1024 },
 });
 
-uploadDocs = multer({
+const uploadDocs = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => cb(null, DOCS_DIR),
     filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname),
