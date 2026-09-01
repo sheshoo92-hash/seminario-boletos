@@ -32,312 +32,74 @@ if (process.env.MP_ACCESS_TOKEN && process.env.MP_ACCESS_TOKEN !== 'TU_ACCESS_TO
   mpClient = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
 }
 
-// ---------- Email ----------
-let emailTransporter = null;
-if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-  emailTransporter = nodemailer.createTransport({ service: 'gmail', auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS } });
+// ---------- Email (Resend) ----------
+async function sendResendEmail({ to, subject, html, attachments }) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) { console.log('[EMAIL] No RESEND_API_KEY'); return null; }
+  const evtName = EVENT_NAME_DEFAULT;
+  const resp = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from: evtName + ' <onboarding@resend.dev>',
+      to: Array.isArray(to) ? to : [to],
+      subject,
+      html,
+      attachments: attachments || [],
+    })
+  });
+  const data = await resp.json();
+  if (!resp.ok) throw new Error(JSON.stringify(data));
+  return data;
 }
 
 async function sendTicketEmail(att) {
-  if (!emailTransporter || !att || !att.email) return;
+  if (!process.env.RESEND_API_KEY || !att || !att.email) return;
   try {
     const qrDataUrl = await QRCode.toDataURL(att.ticket_code, { width: 280, margin: 1 });
     const b64 = qrDataUrl.replace(/^data:image\/png;base64,/, '');
     const evtName = EVENT_NAME_DEFAULT;
     const ticketUrl = BASE_URL + '/ticket.html?code=' + att.ticket_code;
     const num = att.ticket_number ? '#' + att.ticket_number : '';
-    await emailTransporter.sendMail({
-      from: '"' + evtName + '" <' + process.env.EMAIL_USER + '>',
+    await sendResendEmail({
       to: att.email,
       subject: 'Tu boleto ' + num + ' para ' + evtName,
-      html: '<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;border:1px solid #e0e0e0;border-radius:14px;"><h2 style="color:#1c3a6e;text-align:center;">' + evtName + '</h2><p style="text-align:center;color:#666;">¡Tu pago fue confirmado!</p><p>Hola <strong>' + att.full_name + '</strong>,</p><p>Aquí está tu código QR:</p><div style="text-align:center;margin:24px 0;"><img src="cid:qrcode" alt="QR" style="width:220px;height:220px;border:4px solid #1c3a6e;border-radius:12px;"></div>' + (att.ticket_number ? '<p style="text-align:center;font-weight:bold;color:#1c3a6e;">Boleto ' + num + '</p>' : '') + '<p style="text-align:center;"><a href="' + ticketUrl + '" style="background:#1c3a6e;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">Ver mi boleto digital →</a></p><p style="color:#999;font-size:0.78rem;margin-top:24px;border-top:1px solid #eee;padding-top:12px;">Guarda este correo o el screenshot de tu QR para entrar al evento.</p></div>',
-      attachments: [{ filename: 'qr-boleto.png', content: b64, encoding: 'base64', cid: 'qrcode' }]
+      html: '<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;border:1px solid #e0e0e0;border-radius:14px;"><h2 style="color:#1c3a6e;text-align:center;">' + evtName + '</h2><p style="text-align:center;color:#666;">¡Tu pago fue confirmado!</p><p>Hola <strong>' + att.full_name + '</strong>,</p><p>Aquí está tu código QR de acceso:</p><div style="text-align:center;margin:24px 0;"><img src="' + qrDataUrl + '" alt="QR" style="width:220px;height:220px;border:4px solid #1c3a6e;border-radius:12px;"></div>' + (att.ticket_number ? '<p style="text-align:center;font-weight:bold;color:#1c3a6e;">Boleto ' + num + '</p>' : '') + '<p style="text-align:center;"><a href="' + ticketUrl + '" style="background:#1c3a6e;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">Ver mi boleto digital →</a></p><p style="color:#999;font-size:0.82rem;text-align:center;margin-top:20px;">Presenta este QR en la entrada del evento.</p></div>',
+      attachments: [],
     });
     console.log('[EMAIL] Enviado a', att.email);
   } catch(err) { console.error('[EMAIL] Error:', err.message); }
 }
 
 async function sendPaqueteEmail(paqueteId) {
-  if (!emailTransporter) return;
+  if (!process.env.RESEND_API_KEY) return;
   try {
     const attendees = db.getByPaqueteId(paqueteId);
     if (!attendees.length) return;
     const buyerEmail = attendees.find(a => a.email)?.email;
     if (!buyerEmail) return;
     const evtName = EVENT_NAME_DEFAULT;
-    const qrAttachments = [];
     let ticketRows = '';
     for (let i = 0; i < attendees.length; i++) {
       const att = attendees[i];
       const qrDataUrl = await QRCode.toDataURL(att.ticket_code, { width: 220, margin: 1 });
-      const b64 = qrDataUrl.replace(/^data:image\/png;base64,/, '');
-      const cid = 'qr' + i;
-      qrAttachments.push({ filename: 'qr-boleto-' + (i+1) + '.png', content: b64, encoding: 'base64', cid });
       const ticketUrl = BASE_URL + '/ticket.html?code=' + att.ticket_code;
       const num = att.ticket_number ? '#' + att.ticket_number : '';
       ticketRows += '<div style="border:1px solid #d8c5ff;border-radius:10px;padding:14px;margin-bottom:16px;text-align:center;">' +
         '<p style="margin:0 0 6px;font-weight:700;color:#7c3aed;">' + att.full_name + '</p>' +
         (att.ticket_number ? '<p style="margin:0 0 8px;color:#1c3a6e;font-weight:700;">Boleto ' + num + '</p>' : '') +
-        '<img src="cid:' + cid + '" alt="QR" style="width:180px;height:180px;border:3px solid #7c3aed;border-radius:10px;display:block;margin:0 auto 10px;">' +
+        '<img src="' + qrDataUrl + '" alt="QR" style="width:180px;height:180px;border:3px solid #7c3aed;border-radius:10px;display:block;margin:0 auto 10px;">' +
         '<a href="' + ticketUrl + '" style="background:#7c3aed;color:#fff;padding:8px 20px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:0.9rem;">Ver boleto →</a></div>';
     }
-    await emailTransporter.sendMail({
-      from: '"' + evtName + '" <' + process.env.EMAIL_USER + '>',
+    await sendResendEmail({
       to: buyerEmail,
       subject: 'Tus 4 boletos para ' + evtName + ' — Paquete Grupo',
-      html: '<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;border:1px solid #e0e0e0;border-radius:14px;"><h2 style="color:#7c3aed;text-align:center;">' + evtName + '</h2><p style="text-align:center;color:#666;">¡Pago del Paquete Grupo confirmado! Aquí están los 4 boletos:</p>' + ticketRows + '<p style="color:#999;font-size:0.82rem;text-align:center;margin-top:20px;">Guarda este correo — es el acceso de tu grupo al evento.</p></div>',
-      attachments: qrAttachments,
+      html: '<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;border:1px solid #e0e0e0;border-radius:14px;"><h2 style="color:#7c3aed;text-align:center;">' + evtName + '</h2><p style="text-align:center;color:#666;">¡Pago del Paquete Grupo confirmado!</p>' + ticketRows + '<p style="color:#999;font-size:0.82rem;text-align:center;margin-top:20px;">Guarda este correo — es el acceso de tu grupo al evento.</p></div>',
+      attachments: [],
     });
     console.log('[EMAIL-PAQUETE] Enviado a', buyerEmail);
   } catch(err) { console.error('[EMAIL-PAQUETE] Error:', err.message); }
 }
-
-// ---------- Directorios de uploads ----------
-const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(__dirname, 'public', 'uploads');
-const DOCS_DIR = path.join(UPLOADS_DIR, 'docs');
-[UPLOADS_DIR, DOCS_DIR].forEach(d => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); });
-
-// Servir uploads desde la carpeta configurable (necesario en Railway)
-app.use('/uploads', express.static(UPLOADS_DIR));
-
-// Multer para flyer del evento
-const uploadFlyer = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => cb(null, UPLOADS_DIR),
-    filename: (req, file, cb) => cb(null, 'flyer' + path.extname(file.originalname)),
-  }),
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => (/^image\//.test(file.mimetype) ? cb(null, true) : cb(new Error('Solo imÃ¡genes'))),
-});
-
-// Multer para documentos de registro (INE / comprobante)
-const uploadDocs = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => cb(null, DOCS_DIR),
-    filename: (req, file, cb) => {
-      const ext = path.extname(file.originalname) || '.jpg';
-      cb(null, Date.now() + '-' + file.fieldname + ext);
-    },
-  }),
-  limits: { fileSize: 8 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => (/^image\//.test(file.mimetype) ? cb(null, true) : cb(new Error('Solo imÃ¡genes'))),
-});
-
-// ---------- Helpers ----------
-function requireAdmin(req, res, next) {
-  const pass = req.headers['x-admin-password'] || req.query.password;
-  if (pass !== ADMIN_PASSWORD) return res.status(401).json({ error: 'No autorizado' });
-  next();
-}
-
-function getEventConfig() {
-  const cfg = db.getConfig();
-  return {
-    eventName:        cfg.eventName        || EVENT_NAME_DEFAULT,
-    eventDate:        cfg.eventDate        || '',
-    precio:           cfg.precio           != null ? cfg.precio           : PRECIO_DEFAULT,
-    early_bird_active: cfg.early_bird_active || false,
-    early_bird_precio: cfg.early_bird_precio != null ? cfg.early_bird_precio : 400,
-    comision_mp:      cfg.comision_mp      != null ? cfg.comision_mp      : 3.49,
-    precio_paquete:   cfg.precio_paquete   != null ? cfg.precio_paquete   : 1400,
-    flyer:            cfg.flyer            || null,
-  };
-}
-
-// NÃºmero mÃ¡ximo de escaneos:
-// - early_bird = true (cualquier tipo, registrado durante el evento) = 2 (Ticket Holder + DÃ­a del evento)
-// - Resto = 1
-function maxCheckins(att) {
-  return att.early_bird ? 2 : 1;
-}
-
-// ---------- Config pÃºblica ----------
-app.get('/api/config', (req, res) => {
-  const cfg = getEventConfig();
-  res.json({
-    eventName:         cfg.eventName,
-    eventDate:         cfg.eventDate,
-    precio:            cfg.early_bird_active ? cfg.early_bird_precio : cfg.precio,
-    precio_normal:     cfg.precio,
-    precio_paquete:    cfg.precio_paquete,
-    early_bird_active: cfg.early_bird_active,
-    early_bird_precio: cfg.early_bird_precio,
-    flyer:             cfg.flyer ? `/uploads/${cfg.flyer}` : null,
-    mpEnabled:         !!mpClient,
-  });
-});
-
-// ---------- Registro ----------
-app.post('/api/register', uploadDocs.fields([
-  { name: 'comprobante', maxCount: 1 },
-  { name: 'ine_photo',   maxCount: 1 },
-  { name: 'ine_nuevo',   maxCount: 1 },
-]), async (req, res) => {
-  try {
-    const {
-      full_name, platino, esmeralda, diamante,
-      ticket_type, auspicio_numero, fecha_auspicio, email,
-    } = req.body;
-
-    if (!full_name || !String(full_name).trim()) {
-      return res.status(400).json({ error: 'Falta el nombre completo' });
-    }
-
-    const type = ticket_type || 'empresario';
-    if (!['empresario', 'nuevo_empresario', 'invitado'].includes(type)) {
-      return res.status(400).json({ error: 'Tipo de boleto invÃ¡lido' });
-    }
-
-    const cfg = getEventConfig();
-    const ticket_code = uuidv4();
-    let amount = 0;
-    let early_bird = false;
-    let comprobante_image = null;
-    let ine_image = null;
-    const emailClean = email ? String(email).trim().toLowerCase() : null;
-
-    // -- Validaciones y precio por tipo --
-    if (type === 'nuevo_empresario') {
-      if (!auspicio_numero || !String(auspicio_numero).trim()) {
-        return res.status(400).json({ error: 'Falta el nÃºmero de empresario' });
-      }
-      // Validar nombre completo (mÃ­nimo 2 palabras)
-      if (full_name.trim().split(/\s+/).length < 2) {
-        return res.status(400).json({ error: 'Por favor escribe tu nombre completo (nombre y apellido).' });
-      }
-
-      const registrosExistentes = db.getNuevoSociosPorNumero(auspicio_numero.trim());
-      const nombreNorm = full_name.trim().toLowerCase().replace(/\s+/g, ' ');
-
-      // FunciÃ³n para detectar si dos nombres son similares (uno contiene al otro)
-      const nombresSimilares = (a, b) => {
-        if (a === b) return true;
-        if (a.includes(b) || b.includes(a)) return true;
-        return false;
-      };
-
-      // Separar registros del mismo titular/cotitular vs otras personas
-      const registrosMismaPersna = registrosExistentes.filter(r =>
-        nombresSimilares(nombreNorm, (r.full_name || '').trim().toLowerCase().replace(/\s+/g, ' '))
-      );
-      const personasUnicas = [...new Set(
-        registrosExistentes.map(r => (r.full_name || '').trim().toLowerCase().replace(/\s+/g, ' '))
-      )].filter(n => !nombresSimilares(n, nombreNorm));
-
-      // Regla 1: esta persona ya usÃ³ sus 2 eventos gratis
-      if (registrosMismaPersna.length >= 2) {
-        return res.status(400).json({ error: 'Ya usaste tus 2 eventos gratuitos como Nuevo Empresario. Debes comprar un boleto de Empresario.' });
-      }
-
-      // Regla 2: el nÃºmero ya tiene 2 personas distintas y esta persona es una tercera
-      if (personasUnicas.length >= 2 && registrosMismaPersna.length === 0) {
-        return res.status(400).json({ error: 'Este nÃºmero de empresario ya tiene registrados al titular y cotitular. No se permiten mÃ¡s registros gratuitos con este nÃºmero.' });
-      }
-      if (!req.files || !req.files.comprobante) {
-        return res.status(400).json({ error: 'Debes subir el comprobante de tu fecha de auspicio' });
-      }
-      comprobante_image = req.files.comprobante[0].filename;
-      if (!req.files || !req.files.ine_nuevo) {
-        return res.status(400).json({ error: 'Debes subir una foto de tu INE' });
-      }
-      ine_image = req.files.ine_nuevo[0].filename;
-      amount = 0; // gratis
-      if (cfg.early_bird_active) early_bird = true; // Ticket Holder si se registrÃ³ durante el evento
-
-    } else if (type === 'invitado') {
-      const existing = db.getInvitadoByNombre(full_name.trim());
-      if (existing) {
-        return res.status(400).json({ error: 'Ya existe un registro de este invitado. Los invitados sÃ³lo pueden asistir gratuitamente una sola vez.' });
-      }
-      if (!req.files || !req.files.ine_photo) {
-        return res.status(400).json({ error: 'Debes subir una foto de tu INE' });
-      }
-      ine_image = req.files.ine_photo[0].filename;
-      amount = 0; // acceso gratuito
-      if (cfg.early_bird_active) early_bird = true; // Ticket Holder si se registrÃ³ durante el evento
-
-    } else { // empresario
-      if (cfg.early_bird_active) {
-        amount = cfg.early_bird_precio;
-        early_bird = true;
-      } else {
-        amount = cfg.precio;
-      }
-    }
-
-    const record = {
-      ticket_number: null,
-      ticket_code,
-      full_name: full_name.trim(),
-      platino: (platino || '').trim(),
-      esmeralda: (esmeralda || '').trim(),
-      diamante: (diamante || '').trim(),
-      ticket_type: type,
-      auspicio_numero: auspicio_numero ? String(auspicio_numero).trim() : null,
-      fecha_auspicio: fecha_auspicio || null,
-      email: emailClean,
-      comprobante_image,
-      ine_image,
-      amount,
-      early_bird,
-      payment_method: 'mercadopago',
-      payment_status: 'pendiente',
-      mp_preference_id: null,
-      mp_payment_id: null,
-      email_sent: false,
-      checked_in: false,
-      checked_in_count: 0,
-      checked_in_at: null,
-      created_at: new Date().toISOString(),
-    };
-
-    db.insertAttendee(record);
-
-    // Gratis (nuevo_empresario): marcar pagado directo y asignar número
-    if (amount === 0) {
-      db.updateByCode(ticket_code, { payment_status: 'pagado', ticket_number: db.getNextTicketNumber() });
-      sendTicketEmail(db.getByCode(ticket_code)).catch(() => {});
-      return res.json({ demo: true, ticket_code, redirect: `/ticket.html?code=${ticket_code}` });
-    }
-
-    // Sin MP configurado: modo demo
-    if (!mpClient) {
-      db.updateByCode(ticket_code, { payment_status: 'pagado', ticket_number: db.getNextTicketNumber() });
-      sendTicketEmail(db.getByCode(ticket_code)).catch(() => {});
-      return res.json({ demo: true, ticket_code, redirect: `/ticket.html?code=${ticket_code}` });
-    }
-
-    const preference = new Preference(mpClient);
-    const result = await preference.create({
-      body: {
-        items: [{ title: `${cfg.eventName} - Boleto`, quantity: 1, unit_price: amount, currency_id: 'MXN' }],
-        payer: { name: full_name.trim() },
-        external_reference: ticket_code,
-        back_urls: {
-          success: `${BASE_URL}/pago-resultado.html?code=${ticket_code}&status=success`,
-          failure: `${BASE_URL}/pago-resultado.html?code=${ticket_code}&status=failure`,
-          pending: `${BASE_URL}/pago-resultado.html?code=${ticket_code}&status=pending`,
-        },
-        auto_return: 'approved',
-        notification_url: `${BASE_URL}/api/webhook/mercadopago`,
-        payment_methods: {
-          excluded_payment_types: [
-            { id: 'ticket' },
-            { id: 'bank_transfer' },
-            { id: 'atm' },
-          ],
-        },
-      },
-    });
-
-    db.updateByCode(ticket_code, { mp_preference_id: result.id });
-    res.json({ ticket_code, init_point: result.init_point, sandbox_init_point: result.sandbox_init_point });
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Error al crear el registro' });
-  }
-});
 
 // ---------- Registro Paquete Grupo (4 boletos por $1400) ----------
 app.post('/api/register-paquete', async (req, res) => {
@@ -757,17 +519,6 @@ function enrichAttendee(att) {
 
 
 
-
-// ---- Test email ----
-app.get('/api/test-email', async (req, res) => {
-  if (!emailTransporter) return res.json({ ok: false, error: 'No transporter (EMAIL_USER/PASS not set)', EMAIL_USER: process.env.EMAIL_USER || 'not set' });
-  try {
-    await emailTransporter.verify();
-    res.json({ ok: true, message: 'Transporter verified OK', EMAIL_USER: process.env.EMAIL_USER });
-  } catch(err) {
-    res.json({ ok: false, error: err.message, code: err.code });
-  }
-});
 
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en ${BASE_URL} (puerto ${PORT})`);
