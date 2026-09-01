@@ -149,6 +149,179 @@ async function sendPaqueteEmail(paqueteId) {
 }
 
 // ---------- Registro Paquete Grupo (4 boletos por $1400) ----------
+app.post('/api/register', uploadDocs.fields([
+  { name: 'comprobante', maxCount: 1 },
+  { name: 'ine_photo',   maxCount: 1 },
+  { name: 'ine_nuevo',   maxCount: 1 },
+]), async (req, res) => {
+  try {
+    const {
+      full_name, platino, esmeralda, diamante,
+      ticket_type, auspicio_numero, fecha_auspicio, email,
+    } = req.body;
+
+    if (!full_name || !String(full_name).trim()) {
+      return res.status(400).json({ error: 'Falta el nombre completo' });
+    }
+
+    const type = ticket_type || 'empresario';
+    if (!['empresario', 'nuevo_empresario', 'invitado'].includes(type)) {
+      return res.status(400).json({ error: 'Tipo de boleto invÃ¡lido' });
+    }
+
+    const cfg = getEventConfig();
+    const ticket_code = uuidv4();
+    let amount = 0;
+    let early_bird = false;
+    let comprobante_image = null;
+    let ine_image = null;
+    const emailClean = email ? String(email).trim().toLowerCase() : null;
+
+    // -- Validaciones y precio por tipo --
+    if (type === 'nuevo_empresario') {
+      if (!auspicio_numero || !String(auspicio_numero).trim()) {
+        return res.status(400).json({ error: 'Falta el nÃºmero de empresario' });
+      }
+      // Validar nombre completo (mÃ­nimo 2 palabras)
+      if (full_name.trim().split(/\s+/).length < 2) {
+        return res.status(400).json({ error: 'Por favor escribe tu nombre completo (nombre y apellido).' });
+      }
+
+      const registrosExistentes = db.getNuevoSociosPorNumero(auspicio_numero.trim());
+      const nombreNorm = full_name.trim().toLowerCase().replace(/\s+/g, ' ');
+
+      // FunciÃ³n para detectar si dos nombres son similares (uno contiene al otro)
+      const nombresSimilares = (a, b) => {
+        if (a === b) return true;
+        if (a.includes(b) || b.includes(a)) return true;
+        return false;
+      };
+
+      // Separar registros del mismo titular/cotitular vs otras personas
+      const registrosMismaPersna = registrosExistentes.filter(r =>
+        nombresSimilares(nombreNorm, (r.full_name || '').trim().toLowerCase().replace(/\s+/g, ' '))
+      );
+      const personasUnicas = [...new Set(
+        registrosExistentes.map(r => (r.full_name || '').trim().toLowerCase().replace(/\s+/g, ' '))
+      )].filter(n => !nombresSimilares(n, nombreNorm));
+
+      // Regla 1: esta persona ya usÃ³ sus 2 eventos gratis
+      if (registrosMismaPersna.length >= 2) {
+        return res.status(400).json({ error: 'Ya usaste tus 2 eventos gratuitos como Nuevo Empresario. Debes comprar un boleto de Empresario.' });
+      }
+
+      // Regla 2: el nÃºmero ya tiene 2 personas distintas y esta persona es una tercera
+      if (personasUnicas.length >= 2 && registrosMismaPersna.length === 0) {
+        return res.status(400).json({ error: 'Este nÃºmero de empresario ya tiene registrados al titular y cotitular. No se permiten mÃ¡s registros gratuitos con este nÃºmero.' });
+      }
+      if (!req.files || !req.files.comprobante) {
+        return res.status(400).json({ error: 'Debes subir el comprobante de tu fecha de auspicio' });
+      }
+      comprobante_image = req.files.comprobante[0].filename;
+      if (!req.files || !req.files.ine_nuevo) {
+        return res.status(400).json({ error: 'Debes subir una foto de tu INE' });
+      }
+      ine_image = req.files.ine_nuevo[0].filename;
+      amount = 0; // gratis
+      if (cfg.early_bird_active) early_bird = true; // Ticket Holder si se registrÃ³ durante el evento
+
+    } else if (type === 'invitado') {
+      const existing = db.getInvitadoByNombre(full_name.trim());
+      if (existing) {
+        return res.status(400).json({ error: 'Ya existe un registro de este invitado. Los invitados sÃ³lo pueden asistir gratuitamente una sola vez.' });
+      }
+      if (!req.files || !req.files.ine_photo) {
+        return res.status(400).json({ error: 'Debes subir una foto de tu INE' });
+      }
+      ine_image = req.files.ine_photo[0].filename;
+      amount = 0; // acceso gratuito
+      if (cfg.early_bird_active) early_bird = true; // Ticket Holder si se registrÃ³ durante el evento
+
+    } else { // empresario
+      if (cfg.early_bird_active) {
+        amount = cfg.early_bird_precio;
+        early_bird = true;
+      } else {
+        amount = cfg.precio;
+      }
+    }
+
+    const record = {
+      ticket_number: null,
+      ticket_code,
+      full_name: full_name.trim(),
+      platino: (platino || '').trim(),
+      esmeralda: (esmeralda || '').trim(),
+      diamante: (diamante || '').trim(),
+      ticket_type: type,
+      auspicio_numero: auspicio_numero ? String(auspicio_numero).trim() : null,
+      fecha_auspicio: fecha_auspicio || null,
+      email: emailClean,
+      comprobante_image,
+      ine_image,
+      amount,
+      early_bird,
+      payment_method: 'mercadopago',
+      payment_status: 'pendiente',
+      mp_preference_id: null,
+      mp_payment_id: null,
+      email_sent: false,
+      checked_in: false,
+      checked_in_count: 0,
+      checked_in_at: null,
+      created_at: new Date().toISOString(),
+    };
+
+    db.insertAttendee(record);
+
+    // Gratis (nuevo_empresario): marcar pagado directo y asignar número
+    if (amount === 0) {
+      db.updateByCode(ticket_code, { payment_status: 'pagado', ticket_number: db.getNextTicketNumber() });
+      sendTicketEmail(db.getByCode(ticket_code)).catch(() => {});
+      return res.json({ demo: true, ticket_code, redirect: `/ticket.html?code=${ticket_code}` });
+    }
+
+    // Sin MP configurado: modo demo
+    if (!mpClient) {
+      db.updateByCode(ticket_code, { payment_status: 'pagado', ticket_number: db.getNextTicketNumber() });
+      sendTicketEmail(db.getByCode(ticket_code)).catch(() => {});
+      return res.json({ demo: true, ticket_code, redirect: `/ticket.html?code=${ticket_code}` });
+    }
+
+    const preference = new Preference(mpClient);
+    const result = await preference.create({
+      body: {
+        items: [{ title: `${cfg.eventName} - Boleto`, quantity: 1, unit_price: amount, currency_id: 'MXN' }],
+        payer: { name: full_name.trim() },
+        external_reference: ticket_code,
+        back_urls: {
+          success: `${BASE_URL}/pago-resultado.html?code=${ticket_code}&status=success`,
+          failure: `${BASE_URL}/pago-resultado.html?code=${ticket_code}&status=failure`,
+          pending: `${BASE_URL}/pago-resultado.html?code=${ticket_code}&status=pending`,
+        },
+        auto_return: 'approved',
+        notification_url: `${BASE_URL}/api/webhook/mercadopago`,
+        payment_methods: {
+          excluded_payment_types: [
+            { id: 'ticket' },
+            { id: 'bank_transfer' },
+            { id: 'atm' },
+          ],
+        },
+      },
+    });
+
+    db.updateByCode(ticket_code, { mp_preference_id: result.id });
+    res.json({ ticket_code, init_point: result.init_point, sandbox_init_point: result.sandbox_init_point });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al crear el registro' });
+  }
+});
+
+// ---------- Registro Paquete Grupo (4 boletos por $1400) ----------
+
 app.post('/api/register-paquete', async (req, res) => {
   try {
     const { personas, email } = req.body;
