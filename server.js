@@ -340,6 +340,22 @@ app.post('/api/admin/config', uploadFlyer.single('flyer'), (req, res) => {
   }
 });
 
+const const uploadFlyer = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, UPLOADS_DIR),
+    filename: (req, file, cb) => cb(null, 'flyer' + path.extname(file.originalname)),
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
+
+uploadDocs = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, DOCS_DIR),
+    filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname),
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
+
 // ---------- ADMIN: reiniciar evento ----------
 app.post('/api/admin/reset', (req, res) => {
   try {
