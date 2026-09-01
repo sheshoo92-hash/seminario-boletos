@@ -120,6 +120,9 @@
 
     <!-- Campos paquete grupo (4 personas) -->
     <div id="paqueteFields" style="display:none; margin-top:16px;">
+      <label for="paquete_email" style="display:block;margin-bottom:4px;font-weight:700;">Correo electrónico del comprador <span style="color:#c0392b;">*</span></label>
+      <input type="email" id="paquete_email" placeholder="tucorreo@ejemplo.com" oninput="checkValid()" style="width:100%;padding:8px 12px;border:1.5px solid #d1d5db;border-radius:6px;font-size:1rem;box-sizing:border-box;margin-bottom:4px;">
+      <small style="color:#6b7280;display:block;margin-bottom:14px;">Se enviarán los 4 códigos QR a este correo</small>
       <p style="color:#7c3aed; font-weight:700; margin-bottom:10px;">Datos de las 4 personas del grupo:</p>
       <div id="personasContainer"></div>
     </div>
@@ -335,7 +338,8 @@ document.getElementById('form').addEventListener('submit', async e => {
       const res = await fetch('/api/register-paquete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ personas }),
+        const paqueteEmail = (document.getElementById('paquete_email')?.value || '').trim();
+        body: JSON.stringify({ personas, email: paqueteEmail }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al registrar');
