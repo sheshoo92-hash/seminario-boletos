@@ -7,6 +7,7 @@ const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
 const QRCode = require('qrcode');
 const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
+const nodemailer = require('nodemailer');
 const db = require('./db');
 
 const app = express();
@@ -29,6 +30,31 @@ const PRECIO_DEFAULT = parseInt(process.env.PRECIO_BOLETO || '450', 10);
 let mpClient = null;
 if (process.env.MP_ACCESS_TOKEN && process.env.MP_ACCESS_TOKEN !== 'TU_ACCESS_TOKEN_AQUI') {
   mpClient = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
+}
+
+// ---------- Email ----------
+let emailTransporter = null;
+if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+  emailTransporter = nodemailer.createTransport({ service: 'gmail', auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS } });
+}
+
+async function sendTicketEmail(att) {
+  if (!emailTransporter || !att || !att.email) return;
+  try {
+    const qrDataUrl = await QRCode.toDataURL(att.ticket_code, { width: 280, margin: 1 });
+    const b64 = qrDataUrl.replace(/^data:image\/png;base64,/, '');
+    const evtName = EVENT_NAME_DEFAULT;
+    const ticketUrl = BASE_URL + '/ticket.html?code=' + att.ticket_code;
+    const num = att.ticket_number ? '#' + att.ticket_number : '';
+    await emailTransporter.sendMail({
+      from: '"' + evtName + '" <' + process.env.EMAIL_USER + '>',
+      to: att.email,
+      subject: 'Tu boleto ' + num + ' para ' + evtName,
+      html: '<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;border:1px solid #e0e0e0;border-radius:14px;"><h2 style="color:#1c3a6e;text-align:center;">' + evtName + '</h2><p style="text-align:center;color:#666;">¡Tu pago fue confirmado!</p><p>Hola <strong>' + att.full_name + '</strong>,</p><p>Aquí está tu código QR:</p><div style="text-align:center;margin:24px 0;"><img src="cid:qrcode" alt="QR" style="width:220px;height:220px;border:4px solid #1c3a6e;border-radius:12px;"></div>' + (att.ticket_number ? '<p style="text-align:center;font-weight:bold;color:#1c3a6e;">Boleto ' + num + '</p>' : '') + '<p style="text-align:center;"><a href="' + ticketUrl + '" style="background:#1c3a6e;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">Ver mi boleto digital →</a></p><p style="color:#999;font-size:0.78rem;margin-top:24px;border-top:1px solid #eee;padding-top:12px;">Guarda este correo o el screenshot de tu QR para entrar al evento.</p></div>',
+      attachments: [{ filename: 'qr-boleto.png', content: b64, encoding: 'base64', cid: 'qrcode' }]
+    });
+    console.log('[EMAIL] Enviado a', att.email);
+  } catch(err) { console.error('[EMAIL] Error:', err.message); }
 }
 
 // ---------- Directorios de uploads ----------
@@ -115,7 +141,7 @@ app.post('/api/register', uploadDocs.fields([
   try {
     const {
       full_name, platino, esmeralda, diamante,
-      ticket_type, auspicio_numero, fecha_auspicio,
+      ticket_type, auspicio_numero, fecha_auspicio, email,
     } = req.body;
 
     if (!full_name || !String(full_name).trim()) {
@@ -133,6 +159,7 @@ app.post('/api/register', uploadDocs.fields([
     let early_bird = false;
     let comprobante_image = null;
     let ine_image = null;
+    const emailClean = email ? String(email).trim().toLowerCase() : null;
 
     // -- Validaciones y precio por tipo --
     if (type === 'nuevo_empresario') {
@@ -213,6 +240,7 @@ app.post('/api/register', uploadDocs.fields([
       ticket_type: type,
       auspicio_numero: auspicio_numero ? String(auspicio_numero).trim() : null,
       fecha_auspicio: fecha_auspicio || null,
+      email: emailClean,
       comprobante_image,
       ine_image,
       amount,
@@ -221,6 +249,7 @@ app.post('/api/register', uploadDocs.fields([
       payment_status: 'pendiente',
       mp_preference_id: null,
       mp_payment_id: null,
+      email_sent: false,
       checked_in: false,
       checked_in_count: 0,
       checked_in_at: null,
@@ -232,12 +261,14 @@ app.post('/api/register', uploadDocs.fields([
     // Gratis (nuevo_empresario): marcar pagado directo y asignar número
     if (amount === 0) {
       db.updateByCode(ticket_code, { payment_status: 'pagado', ticket_number: db.getNextTicketNumber() });
+      sendTicketEmail(db.getByCode(ticket_code)).catch(() => {});
       return res.json({ demo: true, ticket_code, redirect: `/ticket.html?code=${ticket_code}` });
     }
 
     // Sin MP configurado: modo demo
     if (!mpClient) {
       db.updateByCode(ticket_code, { payment_status: 'pagado', ticket_number: db.getNextTicketNumber() });
+      sendTicketEmail(db.getByCode(ticket_code)).catch(() => {});
       return res.json({ demo: true, ticket_code, redirect: `/ticket.html?code=${ticket_code}` });
     }
 
@@ -404,6 +435,10 @@ app.post('/api/webhook/mercadopago', async (req, res) => {
           const updates = { payment_status: 'pagado', mp_payment_id: String(info.id) };
           if (existing && !existing.ticket_number) updates.ticket_number = db.getNextTicketNumber();
           db.updateByCode(ref, updates);
+          if (existing && !existing.email_sent) {
+            db.updateByCode(ref, { email_sent: true });
+            sendTicketEmail(db.getByCode(ref)).catch(() => {});
+          }
         }
       }
     }
@@ -429,6 +464,10 @@ app.get('/api/ticket/:code', async (req, res) => {
         if (!att.ticket_number) updates.ticket_number = db.getNextTicketNumber();
         db.updateByCode(att.ticket_code, updates);
         att.payment_status = 'pagado';
+        if (!att.email_sent) {
+          db.updateByCode(att.ticket_code, { email_sent: true });
+          sendTicketEmail(db.getByCode(att.ticket_code)).catch(() => {});
+        }
         if (!att.ticket_number) att.ticket_number = updates.ticket_number;
       }
     } catch (e) { /* ignora */ }
