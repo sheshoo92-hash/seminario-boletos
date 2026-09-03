@@ -307,7 +307,6 @@ app.post('/api/register', uploadDocs.fields([
       return res.status(503).json({ error: 'El pago no está disponible. Contacta al organizador.' });
     }
 
-    const prefer
     const preference = new Preference(mpClient);
     const result = await preference.create({
       body: {
@@ -401,8 +400,6 @@ app.post('/api/register-paquete', async (req, res) => {
     if (!mpClient) {
       return res.status(503).json({ error: 'El pago no está disponible. Contacta al organizador.' });
     }
-
-    // Pago
 
     // Pago único de $1400 via Mercado Pago
     const preference = new Preference(mpClient);
