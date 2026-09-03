@@ -147,8 +147,8 @@ async function sendPaqueteEmail(paqueteId) {
     }
     await sendResendEmail({
       to: buyerEmail,
-      subject: 'Tus 4 boletos para ' + evtName + ' Ã¢ÂÂ Paquete Grupo',
-      html: '<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;border:1px solid #e0e0e0;border-radius:14px;"><h2 style="color:#7c3aed;text-align:center;">' + evtName + '</h2><p style="text-align:center;color:#666;">¡Pago del Paquete Grupo confirmado!</p>' + ticketRows + '<p style="color:#999;font-size:0.82rem;text-align:center;margin-top:20px;">Guarda este correo Ã¢ÂÂ es el acceso de tu grupo al evento.</p></div>',
+      subject: 'Tus 4 boletos para ' + evtName + ' â Paquete Grupo',
+      html: '<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;border:1px solid #e0e0e0;border-radius:14px;"><h2 style="color:#7c3aed;text-align:center;">' + evtName + '</h2><p style="text-align:center;color:#666;">¡Pago del Paquete Grupo confirmado!</p>' + ticketRows + '<p style="color:#999;font-size:0.82rem;text-align:center;margin-top:20px;">Guarda este correo â es el acceso de tu grupo al evento.</p></div>',
       attachments: [],
     });
     console.log('[EMAIL-PAQUETE] Enviado a', buyerEmail);
@@ -173,7 +173,7 @@ app.post('/api/register', uploadDocs.fields([
 
     const type = ticket_type || 'empresario';
     if (!['empresario', 'nuevo_empresario', 'invitado'].includes(type)) {
-      return res.status(400).json({ error: 'Tipo de boleto invÃÂ¡lido' });
+      return res.status(400).json({ error: 'Tipo de boleto inválido' });
     }
 
     const cfg = getEventConfig();
@@ -187,9 +187,9 @@ app.post('/api/register', uploadDocs.fields([
     // -- Validaciones y precio por tipo --
     if (type === 'nuevo_empresario') {
       if (!auspicio_numero || !String(auspicio_numero).trim()) {
-        return res.status(400).json({ error: 'Falta el nÃÂÃÂºmero de empresario' });
+        return res.status(400).json({ error: 'Falta el número de empresario' });
       }
-      // Validar nombre completo (mÃÂÃÂ­nimo 2 palabras)
+      // Validar nombre completo (mínimo 2 palabras)
       if (full_name.trim().split(/\s+/).length < 2) {
         return res.status(400).json({ error: 'Por favor escribe tu nombre completo (nombre y apellido).' });
       }
@@ -217,9 +217,9 @@ app.post('/api/register', uploadDocs.fields([
         return res.status(400).json({ error: 'Ya usaste tus 2 eventos gratuitos como Nuevo Empresario. Debes comprar un boleto de Empresario.' });
       }
 
-      // Regla 2: el nÃÂÃÂºmero ya tiene 2 personas distintas y esta persona es una tercera
+      // Regla 2: el número ya tiene 2 personas distintas y esta persona es una tercera
       if (personasUnicas.length >= 2 && registrosMismaPersna.length === 0) {
-        return res.status(400).json({ error: 'Este nÃÂÃÂºmero de empresario ya tiene registrados al titular y cotitular. No se permiten mÃÂ¡s registros gratuitos con este nÃÂÃÂºmero.' });
+        return res.status(400).json({ error: 'Este número de empresario ya tiene registrados al titular y cotitular. No se permiten más registros gratuitos con este número.' });
       }
       if (!req.files || !req.files.comprobante) {
         return res.status(400).json({ error: 'Debes subir el comprobante de tu fecha de auspicio' });
@@ -342,7 +342,7 @@ app.post('/api/register-paquete', async (req, res) => {
         return res.status(400).json({ error: `Persona ${i + 1}: escribe nombre y apellido` });
       }
       if (!p.platino || !p.esmeralda || !p.diamante) {
-        return res.status(400).json({ error: `Persona ${i + 1}: faltan datos de lÃÂÃÂ­nea` });
+        return res.status(400).json({ error: `Persona ${i + 1}: faltan datos de línea` });
       }
     }
 
@@ -393,11 +393,11 @@ app.post('/api/register-paquete', async (req, res) => {
       return res.json({ demo: true, paquete_id, redirect: `/paquete.html?id=${paquete_id}` });
     }
 
-    // Pago ÃÂÃÂºnico de $1400 via Mercado Pago
+    // Pago único de $1400 via Mercado Pago
     const preference = new Preference(mpClient);
     const result = await preference.create({
       body: {
-        items: [{ title: `${cfg.eventName} ÃÂ¢ÃÂÃÂ Paquete Grupo (4 boletos)`, quantity: 1, unit_price: PRECIO_PAQUETE, currency_id: 'MXN' }],
+        items: [{ title: `${cfg.eventName} â Paquete Grupo (4 boletos)`, quantity: 1, unit_price: PRECIO_PAQUETE, currency_id: 'MXN' }],
         payer: { name: personas[0].full_name.trim() },
         external_reference: `paquete:${paquete_id}`,
         back_urls: {
@@ -552,7 +552,7 @@ app.get('/api/admin/attendees', (req, res) => {
   res.json(db.getAll().filter(a => a.payment_status === 'pagado'));
 });
 
-// ---------- ADMIN: bÃÂÃÂºsqueda por nombre ----------
+// ---------- ADMIN: búsqueda por nombre ----------
 app.get('/api/admin/search', (req, res) => {
   const q = req.query.q || '';
   if (q.trim().length < 2) return res.json([]);
@@ -613,7 +613,7 @@ app.get('/api/admin/export', (req, res) => {
   }
 
   const cfg = getEventConfig();
-  // Comisión real MP: (monto ÃÂ 3.49% + $4 fijo) ÃÂ 1.16 IVA
+  // Comisión real MP: (monto × 3.49% + $4 fijo) × 1.16 IVA
   // Para paquetes el cargo fijo aplica una sola vez al total de 4 personas
   const calcComisionMP = (a) => {
     const m = a.amount || 0;
@@ -623,8 +623,8 @@ app.get('/api/admin/export', (req, res) => {
   };
 
   const headers = [
-    'NÃÂ° Boleto', 'Nombre completo', 'Tipo de boleto', 'Platino', 'Esmeralda', 'Diamante',
-    'NÃÂ° Empresario', 'Fecha auspicio', 'Early Bird', 'Monto cobrado',
+    'N° Boleto', 'Nombre completo', 'Tipo de boleto', 'Platino', 'Esmeralda', 'Diamante',
+    'N° Empresario', 'Fecha auspicio', 'Early Bird', 'Monto cobrado',
     'Comisión MP estimada', 'Ingreso neto', 'Estado de pago',
     'Entró', 'Veces escaneado', 'Fecha/hora de entrada', 'TH Escaneado', 'Fecha TH', 'Registrado', 'Link Boleto'
   ];
@@ -641,7 +641,7 @@ app.get('/api/admin/export', (req, res) => {
     } catch(e) { return iso; }
   };
 
-  // Ordenar por fecha de registro (ascendente) para que el nÃÂÃÂºmero sea cronológico
+  // Ordenar por fecha de registro (ascendente) para que el número sea cronológico
   const attendeesSorted = [...attendees].sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
   const rows = attendeesSorted.map((a, i) => {
     const monto = a.amount || 0;
@@ -654,15 +654,15 @@ app.get('/api/admin/export', (req, res) => {
       a.platino || '', a.esmeralda || '', a.diamante || '',
       a.auspicio_numero || '',
       a.fecha_auspicio || '',
-      a.early_bird ? 'SÃÂÃÂ­' : 'No',
+      a.early_bird ? 'Sí' : 'No',
       `$${monto}`,
       `$${comisionMonto}`,
       `$${neto}`,
       a.payment_status || '',
-      a.checked_in ? 'SÃÂÃÂ­' : 'No',
+      a.checked_in ? 'Sí' : 'No',
       (a.checked_in_count || 0) + (a.th_scanned ? 1 : 0),
       a.checked_in_at || '',
-      a.th_scanned ? 'SÃÂÃÂ­' : 'No',
+      a.th_scanned ? 'Sí' : 'No',
       a.th_scanned_at || '',
       fmtDate(a.created_at),
       `${BASE_URL}/ticket.html?code=${a.ticket_code}`,
@@ -686,13 +686,13 @@ app.get('/api/admin/export', (req, res) => {
   const csv = [headers, ...rows].map(r => r.map(csvEscape).join(',')).join('\n');
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${nombreArchivo}.csv"`);
-  res.send('ÃÂ¯ÃÂ»¿' + csv);
+  res.send('ï»¿' + csv);
 });
 
-// ---------- CHECK-IN (escÃÂ¡ner de puerta) ----------
-// modo: 'ticket_holder' = registro previo (solo early bird) | 'evento' = dÃÂÃÂ­a del seminario (default)
+// ---------- CHECK-IN (escáner de puerta) ----------
+// modo: 'ticket_holder' = registro previo (solo early bird) | 'evento' = día del seminario (default)
 // TH y evento son conteos INDEPENDIENTES para que no se interfieran.
-// Endpoint pÃÂÃÂºblico de bÃÂÃÂºsqueda para escÃÂ¡neres (sin datos sensibles)
+// Endpoint público de búsqueda para escáneres (sin datos sensibles)
 app.get('/api/scanner/search', (req, res) => {
   const q = req.query.q || '';
   if (q.trim().length < 2) return res.json([]);
@@ -729,25 +729,25 @@ app.post('/api/checkin', (req, res) => {
     if (att.th_scanned) {
       return res.json({ ok: false, reason: 'ya_escaneado_th', message: 'Este Ticket Holder ya fue registrado', attendee: enrichAttendee(att) });
     }
-    // Registrar TH ÃÂ¢ÃÂÃÂ NO toca checked_in_count del evento
+    // Registrar TH â NO toca checked_in_count del evento
     const updated = db.updateByCode(ticket_code, { th_scanned: true, th_scanned_at: ts() });
-    return res.json({ ok: true, message: 'Ticket Holder registrado ÃÂ¢ÃÂÃÂ', attendee: enrichAttendee(updated) });
+    return res.json({ ok: true, message: 'Ticket Holder registrado â', attendee: enrichAttendee(updated) });
   }
 
-  // ---- Modo Evento (dÃÂÃÂ­a del seminario) ÃÂ¢ÃÂÃÂ independiente del TH ----
+  // ---- Modo Evento (día del seminario) â independiente del TH ----
   const count = att.checked_in_count || 0;
   if (count >= 1) {
-    return res.json({ ok: false, reason: 'ya_usado', message: 'Este boleto ya fue usado el dÃÂÃÂ­a del evento', attendee: enrichAttendee(att) });
+    return res.json({ ok: false, reason: 'ya_usado', message: 'Este boleto ya fue usado el día del evento', attendee: enrichAttendee(att) });
   }
   const updated = db.updateByCode(ticket_code, {
     checked_in: true,
     checked_in_count: 1,
     checked_in_at: ts(),
   });
-  res.json({ ok: true, message: 'Acceso permitido ÃÂ¢ÃÂÃÂ', attendee: enrichAttendee(updated) });
+  res.json({ ok: true, message: 'Acceso permitido â', attendee: enrichAttendee(updated) });
 });
 
-// Agrega URLs de imÃÂ¡genes al objeto de asistente
+// Agrega URLs de imágenes al objeto de asistente
 function enrichAttendee(att) {
   return {
     ...att,
