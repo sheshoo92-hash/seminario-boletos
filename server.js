@@ -147,8 +147,8 @@ async function sendPaqueteEmail(paqueteId) {
     }
     await sendResendEmail({
       to: buyerEmail,
-      subject: 'Tus 4 boletos para ' + evtName + ' â Paquete Grupo',
-      html: '<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;border:1px solid #e0e0e0;border-radius:14px;"><h2 style="color:#7c3aed;text-align:center;">' + evtName + '</h2><p style="text-align:center;color:#666;">¡Pago del Paquete Grupo confirmado!</p>' + ticketRows + '<p style="color:#999;font-size:0.82rem;text-align:center;margin-top:20px;">Guarda este correo â es el acceso de tu grupo al evento.</p></div>',
+      subject: 'Tus 4 boletos para ' + evtName + ' — Paquete Grupo',
+      html: '<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;border:1px solid #e0e0e0;border-radius:14px;"><h2 style="color:#7c3aed;text-align:center;">' + evtName + '</h2><p style="text-align:center;color:#666;">¡Pago del Paquete Grupo confirmado!</p>' + ticketRows + '<p style="color:#999;font-size:0.82rem;text-align:center;margin-top:20px;">Guarda este correo — es el acceso de tu grupo al evento.</p></div>',
       attachments: [],
     });
     console.log('[EMAIL-PAQUETE] Enviado a', buyerEmail);
@@ -397,7 +397,7 @@ app.post('/api/register-paquete', async (req, res) => {
     const preference = new Preference(mpClient);
     const result = await preference.create({
       body: {
-        items: [{ title: `${cfg.eventName} â Paquete Grupo (4 boletos)`, quantity: 1, unit_price: PRECIO_PAQUETE, currency_id: 'MXN' }],
+        items: [{ title: `${cfg.eventName} — Paquete Grupo (4 boletos)`, quantity: 1, unit_price: PRECIO_PAQUETE, currency_id: 'MXN' }],
         payer: { name: personas[0].full_name.trim() },
         external_reference: `paquete:${paquete_id}`,
         back_urls: {
@@ -686,7 +686,7 @@ app.get('/api/admin/export', (req, res) => {
   const csv = [headers, ...rows].map(r => r.map(csvEscape).join(',')).join('\n');
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${nombreArchivo}.csv"`);
-  res.send('ï»¿' + csv);
+  res.send('﻿' + csv);
 });
 
 // ---------- CHECK-IN (escáner de puerta) ----------
@@ -729,12 +729,12 @@ app.post('/api/checkin', (req, res) => {
     if (att.th_scanned) {
       return res.json({ ok: false, reason: 'ya_escaneado_th', message: 'Este Ticket Holder ya fue registrado', attendee: enrichAttendee(att) });
     }
-    // Registrar TH â NO toca checked_in_count del evento
+    // Registrar TH — NO toca checked_in_count del evento
     const updated = db.updateByCode(ticket_code, { th_scanned: true, th_scanned_at: ts() });
-    return res.json({ ok: true, message: 'Ticket Holder registrado â', attendee: enrichAttendee(updated) });
+    return res.json({ ok: true, message: 'Ticket Holder registrado ✔', attendee: enrichAttendee(updated) });
   }
 
-  // ---- Modo Evento (día del seminario) â independiente del TH ----
+  // ---- Modo Evento (día del seminario) — independiente del TH ----
   const count = att.checked_in_count || 0;
   if (count >= 1) {
     return res.json({ ok: false, reason: 'ya_usado', message: 'Este boleto ya fue usado el día del evento', attendee: enrichAttendee(att) });
@@ -744,7 +744,7 @@ app.post('/api/checkin', (req, res) => {
     checked_in_count: 1,
     checked_in_at: ts(),
   });
-  res.json({ ok: true, message: 'Acceso permitido â', attendee: enrichAttendee(updated) });
+  res.json({ ok: true, message: 'Acceso permitido ✔', attendee: enrichAttendee(updated) });
 });
 
 // Agrega URLs de imágenes al objeto de asistente
