@@ -302,13 +302,12 @@ app.post('/api/register', uploadDocs.fields([
       return res.json({ demo: true, ticket_code, redirect: `/ticket.html?code=${ticket_code}` });
     }
 
-    // Sin MP configurado: modo demo
+    // Sin MP configurado: NO aprobar boletos de pago si MP no está disponible
     if (!mpClient) {
-      db.updateByCode(ticket_code, { payment_status: 'pagado', ticket_number: db.getNextTicketNumber() });
-      sendTicketEmail(db.getByCode(ticket_code)).catch(() => {});
-      return res.json({ demo: true, ticket_code, redirect: `/ticket.html?code=${ticket_code}` });
+      return res.status(503).json({ error: 'El pago no está disponible. Contacta al organizador.' });
     }
 
+    const prefer
     const preference = new Preference(mpClient);
     const result = await preference.create({
       body: {
@@ -398,14 +397,12 @@ app.post('/api/register-paquete', async (req, res) => {
       ticket_codes.push(ticket_code);
     }
 
-    // Modo demo (sin MP configurado)
+    // Sin MP configurado: NO aprobar paquetes automáticamente
     if (!mpClient) {
-      for (const code of ticket_codes) {
-        db.updateByCode(code, { payment_status: 'pagado', ticket_number: db.getNextTicketNumber() });
-      }
-      sendPaqueteEmail(paquete_id).catch(() => {});
-      return res.json({ demo: true, paquete_id, redirect: `/paquete.html?id=${paquete_id}` });
+      return res.status(503).json({ error: 'El pago no está disponible. Contacta al organizador.' });
     }
+
+    // Pago
 
     // Pago único de $1400 via Mercado Pago
     const preference = new Preference(mpClient);
