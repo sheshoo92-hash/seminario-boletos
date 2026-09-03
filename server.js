@@ -10,6 +10,20 @@ const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
 const nodemailer = require('nodemailer');
 const db = require('./db');
 
+// === FIX: Boletos 102-108 revertir a pendiente (MP desconectado, no pagaron) ===
+setTimeout(() => {
+  try {
+    [102,103,104,105,106,107,108].forEach(num => {
+      const att = db.getAll().find(a => Number(a.ticket_number) === num && a.payment_status === 'pagado' && !a.mp_payment_id);
+      if (att) {
+        db.updateByCode(att.ticket_code, { payment_status: 'pendiente' });
+        console.log('[FIX] Boleto', num, att.full_name, 'â†’ pendiente');
+      }
+    });
+  } catch(e) { console.error('[FIX]', e.message); }
+}, 3000);
+
+
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public'), {
@@ -763,7 +777,7 @@ function enrichAttendee(att) {
 
 
 
-// ---------- ADMIN: cancelar boletos por número (revertir a pendiente) ----------
+// ---------- ADMIN: cancelar boletos por nï¿½mero (revertir a pendiente) ----------
 app.post('/api/admin/cancel-tickets', requireAdmin, (req, res) => {
   const { ticket_numbers } = req.body;
   if (!Array.isArray(ticket_numbers) || ticket_numbers.length === 0) {
