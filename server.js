@@ -762,6 +762,24 @@ function enrichAttendee(att) {
 
 
 
+
+// ---------- ADMIN: cancelar boletos por número (revertir a pendiente) ----------
+app.post('/api/admin/cancel-tickets', requireAdmin, (req, res) => {
+  const { ticket_numbers } = req.body;
+  if (!Array.isArray(ticket_numbers) || ticket_numbers.length === 0) {
+    return res.status(400).json({ error: 'Falta ticket_numbers (array)' });
+  }
+  const all = db.getAll();
+  const results = [];
+  for (const num of ticket_numbers) {
+    const att = all.find(a => Number(a.ticket_number) === Number(num));
+    if (!att) { results.push({ ticket_number: num, ok: false, error: 'no encontrado' }); continue; }
+    db.updateByCode(att.ticket_code, { payment_status: 'pendiente' });
+    results.push({ ticket_number: num, ok: true, full_name: att.full_name });
+  }
+  res.json({ results });
+});
+
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en ${BASE_URL} (puerto ${PORT})`);
 });
