@@ -83,7 +83,7 @@ async function load() {
       if (usados === 0) {
         html += '<div class="status-pill" style="background:#e6f0ff; color:#1c3a6e; margin-top:8px;">ðŸŽŸ VÃ¡lido para 2 escaneos:<br>â‘  Ticket Holder (dÃ­a de compra) Â· â‘¡ DÃ­a del evento</div>';
       } else if (usados === 1) {
-        html += '<div class="status-pill status-warn">âœ” 1er escaneo usado (Ticket Holder)<br>Falta: escaneo del dÃ­a del evento</div>';
+        html += '<div class="status-pill status-warn">1er escaneo usado (Ticket Holder)<br>Falta: escaneo del día del evento</div>';
       }
     }
     html += '<p class="muted">Presenta este cÃ³digo QR en la entrada.</p>';
@@ -92,7 +92,7 @@ async function load() {
     } else {
       html += '<div class="status-pill status-ok">Pago confirmado Â· Acceso vÃ¡lido</div>';
     }
-    html += '<button id="downloadBtn" onclick="descargarBoleto()">â¬‡ Guardar boleto como imagen</button>';
+    html += '<button id="downloadBtn" onclick="descargarBoleto()">Guardar boleto como imagen</button>';
   } else {
     html += '<div class="status-pill status-bad">Pago pendiente</div>';
     html += '<p class="muted">Tu boleto aparecerÃ¡ aquÃ­ en cuanto se confirme el pago.</p>';
@@ -194,7 +194,7 @@ async function descargarBoleto() {
     y += 28;
 
     // Badge "Pago confirmado Â· Acceso vÃ¡lido"
-    const statusText = 'âœ”  Pago confirmado Â· Acceso vÃ¡lido';
+    const statusText = 'Pago confirmado · Acceso válido';
     ctx.font = 'bold 13px system-ui, sans-serif';
     const sw = ctx.measureText(statusText).width + 32;
     ctx.fillStyle = '#d4edda';
@@ -206,26 +206,15 @@ async function descargarBoleto() {
     // Descargar
     const _dataUrl = canvas.toDataURL('image/png');
     const _isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if (_isMobile) {
-      let _ov = document.getElementById('_saveOverlay');
-      if (_ov) _ov.remove();
-      _ov = document.createElement('div');
-      _ov.id = '_saveOverlay';
-      _ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px;box-sizing:border-box;';
-      const _msg = document.createElement('p');
-      _msg.style.cssText = 'color:#fff;font-size:15px;text-align:center;margin:0;line-height:1.6;';
-      _msg.innerHTML = 'Mant&eacute;n presionada la imagen<br>y elige <b>&ldquo;A&ntilde;adir a Fotos&rdquo;</b><br>para guardarla en tu galer&iacute;a';
-      const _imgEl = document.createElement('img');
-      _imgEl.src = _dataUrl;
-      _imgEl.style.cssText = 'max-width:100%;max-height:60vh;border-radius:12px;';
-      const _btnC = document.createElement('button');
-      _btnC.textContent = 'Cerrar';
-      _btnC.style.cssText = 'padding:12px 32px;background:#fff;border:none;border-radius:8px;font-size:16px;font-weight:bold;cursor:pointer;';
-      _btnC.onclick = function(){ document.getElementById('_saveOverlay').remove(); };
-      _ov.appendChild(_msg);
-      _ov.appendChild(_imgEl);
-      _ov.appendChild(_btnC);
-      document.body.appendChild(_ov);
+    if (_isMobile && navigator.share) {
+      fetch(_dataUrl).then(function(r){ return r.blob(); }).then(function(_blob){
+        const _fname = 'boleto-' + (data.ticket_number || code) + '.png';
+        const _file = new File([_blob], _fname, {type:'image/png'});
+        navigator.share({files:[_file], title:'Mi Boleto'}).catch(function(){
+          const link = document.createElement('a');
+          link.download = _fname; link.href = _dataUrl; link.click();
+        });
+      });
     } else {
       const link = document.createElement('a');
       link.download = 'boleto-' + (data.ticket_number || code) + '.png';
@@ -233,12 +222,12 @@ async function descargarBoleto() {
       link.click();
     }
 
-    btn.textContent = 'âœ” Imagen descargada';
+    btn.textContent = 'Imagen descargada';
     btn.style.background = '#1c3a6e';
-    setTimeout(() => { btn.textContent = 'â¬‡ Guardar boleto como imagen'; btn.disabled = false; btn.style.background = ''; }, 3000);
+    setTimeout(() => { btn.textContent = 'Guardar boleto como imagen'; btn.disabled = false; btn.style.background = ''; }, 3000);
   } catch(e) {
     console.error(e);
-    btn.textContent = 'â¬‡ Guardar boleto como imagen';
+    btn.textContent = 'Guardar boleto como imagen';
     btn.disabled = false;
     alert('Error: ' + e.message);
   }
