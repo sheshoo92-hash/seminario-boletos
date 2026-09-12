@@ -76,7 +76,7 @@ button.primary {
   font-weight: 700;
   cursor: pointer;
 }
-button.primary:disabled { opacity: 0.6; cursor: not-allowed; }
+button.primary:disabled { opacity: 0.65; background: #9ca3af; cursor: not-allowed; color: #fff; }
 .error {
   color: #c0392b;
   text-align: center;
