@@ -19,7 +19,7 @@
 .tipo-nuevo_empresario { background:#0a8f5b; }
 .tipo-invitado       { background:#a86a00; }
 
-.ticket-bg-flyer { display:block; width:100%; height:auto; border-radius:8px; margin-bottom:14px; }
+.ticket-bg-flyer { display:block; max-width:160px; height:auto; border-radius:8px; margin:0 auto 14px; }
 #ticketCard { overflow:hidden; }
 </style>
 </head>
@@ -77,7 +77,7 @@ async function load() {
   if (data.auspicio_numero) html += '<p class="muted">NÂ° Empresario: ' + data.auspicio_numero + '</p>';
 
   if (data.payment_status === 'pagado') {
-    html += '<div><img src="' + data.qr + '" width="220" height="220" alt="QR del boleto"></div>';
+    html += '<div><img src="' + data.qr + '" width="300" height="300" alt="QR del boleto"></div>';
     if (data.early_bird && data.max_checkins === 2) {
       const usados = data.checked_in_count || 0;
       if (usados === 0) {
@@ -125,9 +125,9 @@ async function descargarBoleto() {
     // Cargar flyer
     let flyerImg=null;
     try{const cfgR=await fetch('/api/config');const cfg=await cfgR.json();if(cfg.flyer){flyerImg=new Image();flyerImg.crossOrigin='anonymous';flyerImg.src=cfg.flyer;await new Promise(r=>{flyerImg.onload=r;flyerImg.onerror=()=>{flyerImg=null;r()};});};}catch(e){}
-    const flyerH=flyerImg?Math.round(flyerImg.height/flyerImg.width*640):0;
-    const qrSize = 200;
-    const H = flyerH + pad + 30 + lines.length * 28 + 20 + qrSize + 20 + 36 + pad;
+    const flyerDispW=flyerImg?180:0;const flyerDispH=flyerImg?Math.round(flyerImg.height/flyerImg.width*flyerDispW):0;const flyerH=0;
+    const qrSize = 300;
+    const H = pad + 30 + lines.length * 28 + 20 + (flyerDispH>0?flyerDispH+14:0) + qrSize + 20 + 36 + pad;
 
     const canvas = document.createElement('canvas');
     canvas.width = W; canvas.height = H;
@@ -136,7 +136,7 @@ async function descargarBoleto() {
     // Fondo blanco con borde redondeado simulado
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, W, H);
-    if(flyerImg){ctx.drawImage(flyerImg,0,0,W,flyerH);}
+    
 
     // Borde superior de color
     ctx.fillStyle = tipoColors[data.ticket_type] || '#1c3a6e';
@@ -177,6 +177,8 @@ async function descargarBoleto() {
     }
     y = badgeY + 36;
 
+    // Flyer pequeño centrado
+    if(flyerImg && flyerDispW>0){ctx.drawImage(flyerImg,(W-flyerDispW)/2,y,flyerDispW,flyerDispH);y+=flyerDispH+14;}
     // QR
     const qrImg = new Image();
     qrImg.src = data.qr;
