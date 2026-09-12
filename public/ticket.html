@@ -18,6 +18,13 @@
 .tipo-empresario     { background:#1c3a6e; }
 .tipo-nuevo_empresario { background:#0a8f5b; }
 .tipo-invitado       { background:#a86a00; }
+#ticketCard { position:relative; overflow:hidden; }
+.ticket-bg-flyer {
+  position:absolute; top:0; left:0; width:100%; height:100%;
+  object-fit:cover; filter:blur(10px); opacity:0.18;
+  border-radius:inherit; pointer-events:none; z-index:0;
+}
+#ticketCard > * { position:relative; z-index:1; }
 </style>
 </head>
 <body>
@@ -51,6 +58,22 @@ async function load() {
     d.style.display = 'block';
   }
 
+  // Flyer de fondo
+  fetch('/api/config').then(r => r.json()).then(cfg => {
+    if (cfg.flyer) {
+      let bg = document.getElementById('ticketBgFlyer');
+      if (!bg) {
+        bg = document.createElement('img');
+        bg.id = 'ticketBgFlyer';
+        bg.className = 'ticket-bg-flyer';
+        bg.alt = '';
+        const card = document.getElementById('ticketCard');
+        card.insertBefore(bg, card.firstChild);
+      }
+      bg.src = cfg.flyer;
+    }
+  }).catch(() => {});
+
   const tipo = data.ticket_type || 'empresario';
   let html = '';
   if (data.ticket_number) {
@@ -80,7 +103,7 @@ async function load() {
     } else {
       html += '<div class="status-pill status-ok">Pago confirmado · Acceso válido</div>';
     }
-    html += '<button id="downloadBtn" onclick="descargarBoleto()">⬇ Guardar boleto como imagen</button>';
+    html += '<button id="downloadBtn" onclick="descargarBoleto()">⌇ Guardar boleto como imagen</button>';
   } else {
     html += '<div class="status-pill status-bad">Pago pendiente</div>';
     html += '<p class="muted">Tu boleto aparecerá aquí en cuanto se confirme el pago.</p>';
@@ -95,6 +118,19 @@ async function descargarBoleto() {
   btn.textContent = 'Generando imagen...';
   btn.disabled = true;
   try {
+    // Cargar flyer si existe
+    let flyerImg = null;
+    try {
+      const cfgR = await fetch('/api/config');
+      const cfg = await cfgR.json();
+      if (cfg.flyer) {
+        flyerImg = new Image();
+        flyerImg.crossOrigin = 'anonymous';
+        flyerImg.src = cfg.flyer;
+        await new Promise(r => { flyerImg.onload = r; flyerImg.onerror = () => { flyerImg = null; r(); }; });
+      }
+    } catch(e) {}
+
     const W = 640, pad = 40;
     const tipoLabels = { empresario: 'Empresario', nuevo_empresario: 'Nuevo Empresario', invitado: 'Invitado' };
     const tipoColors = { empresario: '#1c3a6e', nuevo_empresario: '#0a8f5b', invitado: '#a86a00' };
@@ -117,9 +153,24 @@ async function descargarBoleto() {
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d');
 
-    // Fondo blanco con borde redondeado simulado
+    // Fondo blanco
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, W, H);
+
+    // Flyer de fondo (borroso y semitransparente)
+    if (flyerImg) {
+      ctx.save();
+      ctx.filter = 'blur(8px)';
+      ctx.globalAlpha = 0.2;
+      const scale = Math.max(W / flyerImg.width, H / flyerImg.height);
+      const fw = flyerImg.width * scale;
+      const fh = flyerImg.height * scale;
+      ctx.drawImage(flyerImg, (W - fw) / 2, (H - fh) / 2, fw, fh);
+      ctx.restore();
+      // Overlay blanco para legibilidad
+      ctx.fillStyle = 'rgba(255,255,255,0.72)';
+      ctx.fillRect(0, 0, W, H);
+    }
 
     // Borde superior de color
     ctx.fillStyle = tipoColors[data.ticket_type] || '#1c3a6e';
@@ -192,10 +243,10 @@ async function descargarBoleto() {
 
     btn.textContent = '✔ Imagen descargada';
     btn.style.background = '#1c3a6e';
-    setTimeout(() => { btn.textContent = '⬇ Guardar boleto como imagen'; btn.disabled = false; btn.style.background = ''; }, 3000);
+    setTimeout(() => { btn.textContent = '⌇ Guardar boleto como imagen'; btn.disabled = false; btn.style.background = ''; }, 3000);
   } catch(e) {
     console.error(e);
-    btn.textContent = '⬇ Guardar boleto como imagen';
+    btn.textContent = '⌇ Guardar boleto como imagen';
     btn.disabled = false;
     alert('Error: ' + e.message);
   }
