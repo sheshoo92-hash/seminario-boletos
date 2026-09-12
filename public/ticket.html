@@ -69,33 +69,33 @@ async function load() {
     html += '<p class="muted" style="font-size:0.8rem; margin-bottom:4px;">Boleto #' + data.ticket_number + '</p>';
   }
   html += '<span class="tipo-badge tipo-' + tipo + '">' + (tipoLabel[tipo] || tipo) + '</span>';
-  if (data.early_bird) html += ' <span class="tipo-badge" style="background:#c07000;">Early Bird ðŸŽ‰</span>';
+  if (data.early_bird) html += ' <span class="tipo-badge" style="background:#c07000;">Early Bird </span>';
   html += '<p><strong>' + data.full_name + '</strong></p>';
   if (data.platino)   html += '<p class="muted">Platino: ' + data.platino + '</p>';
   if (data.esmeralda) html += '<p class="muted">Esmeralda: ' + data.esmeralda + '</p>';
   if (data.diamante)  html += '<p class="muted">Diamante: ' + data.diamante + '</p>';
-  if (data.auspicio_numero) html += '<p class="muted">NÂ° Empresario: ' + data.auspicio_numero + '</p>';
+  if (data.auspicio_numero) html += '<p class="muted">N° Empresario: ' + data.auspicio_numero + '</p>';
 
   if (data.payment_status === 'pagado') {
     html += '<div><img src="' + data.qr + '" width="300" height="300" alt="QR del boleto"></div>';
     if (data.early_bird && data.max_checkins === 2) {
       const usados = data.checked_in_count || 0;
       if (usados === 0) {
-        html += '<div class="status-pill" style="background:#e6f0ff; color:#1c3a6e; margin-top:8px;">ðŸŽŸ VÃ¡lido para 2 escaneos:<br>â‘  Ticket Holder (dÃ­a de compra) Â· â‘¡ DÃ­a del evento</div>';
+        html += '<div class="status-pill" style="background:#e6f0ff; color:#1c3a6e; margin-top:8px;"> Válido para 2 escaneos:<br> Ticket Holder (día de compra) ·  Día del evento</div>';
       } else if (usados === 1) {
         html += '<div class="status-pill status-warn">1er escaneo usado (Ticket Holder)<br>Falta: escaneo del día del evento</div>';
       }
     }
-    html += '<p class="muted">Presenta este cÃ³digo QR en la entrada.</p>';
+    html += '<p class="muted">Presenta este código QR en la entrada.</p>';
     if (data.checked_in_count >= data.max_checkins) {
-      html += '<div class="status-pill status-warn">Ya se registrÃ³ tu entrada (' + (data.checked_in_at || '') + ')</div>';
+      html += '<div class="status-pill status-warn">Ya se registró tu entrada (' + (data.checked_in_at || '') + ')</div>';
     } else {
-      html += '<div class="status-pill status-ok">Pago confirmado Â· Acceso vÃ¡lido</div>';
+      html += '<div class="status-pill status-ok">Pago confirmado · Acceso válido</div>';
     }
     html += '<button id="downloadBtn" onclick="descargarBoleto()">Guardar boleto como imagen</button>';
   } else {
     html += '<div class="status-pill status-bad">Pago pendiente</div>';
-    html += '<p class="muted">Tu boleto aparecerÃ¡ aquÃ­ en cuanto se confirme el pago.</p>';
+    html += '<p class="muted">Tu boleto aparecerá aquí en cuanto se confirme el pago.</p>';
     html += '<button class="primary" onclick="load()">Actualizar</button>';
   }
 
@@ -111,7 +111,7 @@ async function descargarBoleto() {
     const tipoLabels = { empresario: 'Empresario', nuevo_empresario: 'Nuevo Empresario', invitado: 'Invitado' };
     const tipoColors = { empresario: '#1c3a6e', nuevo_empresario: '#0a8f5b', invitado: '#a86a00' };
 
-    // Calcular altura dinÃ¡mica
+    // Calcular altura dinámica
     const lines = [];
     if (data.ticket_number) lines.push({ text: 'Boleto #' + data.ticket_number, size: 14, color: '#888', bold: false });
     lines.push({ text: data.eventName, size: 22, color: '#1c3a6e', bold: true });
@@ -120,7 +120,7 @@ async function descargarBoleto() {
     if (data.platino)   lines.push({ text: 'Platino: ' + data.platino, size: 14, color: '#555', bold: false });
     if (data.esmeralda) lines.push({ text: 'Esmeralda: ' + data.esmeralda, size: 14, color: '#555', bold: false });
     if (data.diamante)  lines.push({ text: 'Diamante: ' + data.diamante, size: 14, color: '#555', bold: false });
-    if (data.auspicio_numero) lines.push({ text: 'NÂ° Empresario: ' + data.auspicio_numero, size: 14, color: '#555', bold: false });
+    if (data.auspicio_numero) lines.push({ text: 'N° Empresario: ' + data.auspicio_numero, size: 14, color: '#555', bold: false });
 
     // Cargar flyer
     let flyerImg=null;
@@ -142,7 +142,7 @@ async function descargarBoleto() {
     ctx.fillStyle = tipoColors[data.ticket_type] || '#1c3a6e';
     ctx.fillRect(0, flyerH, W, 8);
 
-    // LÃ­neas de texto
+    // Líneas de texto
     let y = flyerH + pad + 8;
     for (const l of lines) {
       ctx.font = (l.bold ? 'bold ' : '') + l.size + 'px system-ui, -apple-system, sans-serif';
@@ -166,7 +166,7 @@ async function descargarBoleto() {
     ctx.fillText(badgeText, W/2, badgeY + 18);
     let badgeX = W/2 + bw/2 + 8;
     if (data.early_bird) {
-      const ebText = 'Early Bird ðŸŽ‰';
+      const ebText = 'Early Bird ';
       ctx.font = 'bold 13px system-ui, sans-serif';
       const ebw = ctx.measureText(ebText).width + 24;
       ctx.fillStyle = '#c07000';
@@ -190,10 +190,10 @@ async function descargarBoleto() {
     ctx.font = '12px system-ui, sans-serif';
     ctx.fillStyle = '#888';
     ctx.textAlign = 'center';
-    ctx.fillText('Presenta este cÃ³digo QR en la entrada', W/2, y + 12);
+    ctx.fillText('Presenta este código QR en la entrada', W/2, y + 12);
     y += 28;
 
-    // Badge "Pago confirmado Â· Acceso vÃ¡lido"
+    // Badge "Pago confirmado · Acceso válido"
     const statusText = 'Pago confirmado · Acceso válido';
     ctx.font = 'bold 13px system-ui, sans-serif';
     const sw = ctx.measureText(statusText).width + 32;
