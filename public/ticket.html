@@ -125,7 +125,7 @@ async function descargarBoleto() {
     // Cargar flyer
     let flyerImg=null;
     try{const cfgR=await fetch('/api/config');const cfg=await cfgR.json();if(cfg.flyer){flyerImg=new Image();flyerImg.crossOrigin='anonymous';flyerImg.src=cfg.flyer;await new Promise(r=>{flyerImg.onload=r;flyerImg.onerror=()=>{flyerImg=null;r()};});};}catch(e){}
-    const flyerH=flyerImg?Math.min(180,Math.round(flyerImg.height/flyerImg.width*640)):0;
+    const flyerH=flyerImg?Math.round(flyerImg.height/flyerImg.width*640):0;
     const qrSize = 200;
     const H = flyerH + pad + 30 + lines.length * 28 + 20 + qrSize + 20 + 36 + pad;
 
