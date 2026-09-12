@@ -21,7 +21,7 @@
 #ticketCard { position:relative; overflow:hidden; }
 .ticket-bg-flyer {
   position:absolute; top:0; left:0; width:100%; height:100%;
-  object-fit:cover; filter:blur(10px); opacity:0.18;
+  object-fit:cover; opacity:0.25;
   border-radius:inherit; pointer-events:none; z-index:0;
 }
 #ticketCard > * { position:relative; z-index:1; }
@@ -160,15 +160,14 @@ async function descargarBoleto() {
     // Flyer de fondo (borroso y semitransparente)
     if (flyerImg) {
       ctx.save();
-      ctx.filter = 'blur(8px)';
-      ctx.globalAlpha = 0.2;
+            ctx.globalAlpha = 0.25;
       const scale = Math.max(W / flyerImg.width, H / flyerImg.height);
       const fw = flyerImg.width * scale;
       const fh = flyerImg.height * scale;
       ctx.drawImage(flyerImg, (W - fw) / 2, (H - fh) / 2, fw, fh);
       ctx.restore();
       // Overlay blanco para legibilidad
-      ctx.fillStyle = 'rgba(255,255,255,0.72)';
+      ctx.fillStyle = 'rgba(255,255,255,0.65)';
       ctx.fillRect(0, 0, W, H);
     }
 
