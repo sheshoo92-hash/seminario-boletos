@@ -792,6 +792,38 @@ app.post('/api/admin/cancel-tickets', requireAdmin, (req, res) => {
   res.json({ results });
 });
 
+
+// ============================================================
+// REPORTE SOLO LECTURA - Para organizadores
+// ============================================================
+const REPORT_PASSWORD = process.env.REPORT_PASSWORD || 'reporte2026';
+
+app.get('/reporte', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'reporte.html'));
+});
+
+app.get('/api/reporte/data', (req, res) => {
+  const { pass } = req.query;
+  if (!pass || pass !== REPORT_PASSWORD) {
+    return res.status(401).json({ error: 'No autorizado' });
+  }
+  const all = db.getAll().filter(a => a.payment_status === 'pagado');
+  res.json({
+    total: all.length,
+    generado: new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }),
+    boletos: all.map(a => ({
+      numero: a.ticket_number,
+      nombre: a.full_name,
+      email: a.email,
+      tipo: a.ticket_type || 'Empresario',
+      lider: a.auspicio_numero || 'Sin lider',
+      fecha_registro: a.fecha_auspicio || '',
+      ticket_holder: a.th_scanned ? 'Si' : 'No',
+      ingreso_evento: a.checked_in ? 'Si' : 'No'
+    }))
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en ${BASE_URL} (puerto ${PORT})`);
 });
