@@ -808,21 +808,30 @@ app.get('/api/reporte/data', (req, res) => {
     return res.status(401).json({ error: 'No autorizado' });
   }
   const all = db.getAll().filter(a => a.payment_status === 'pagado');
+  const tipoLabel = { empresario: 'Empresario', nuevo_empresario: 'Nuevo Empresario', invitado: 'Invitado' };
   res.json({
     total: all.length,
     generado: new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }),
-    boletos: all.map(a => ({
-      numero: a.ticket_number,
-      nombre: a.full_name,
-      email: a.email,
-      tipo: a.ticket_type || 'Empresario',
-      lider: a.auspicio_numero || 'Sin lider',
-      fecha_registro: a.fecha_auspicio || '',
-      ticket_holder: a.th_scanned ? 'Si' : 'No',
-      ingreso_evento: a.checked_in ? 'Si' : 'No'
+    boletos: all.sort((a,b) => (a.created_at||'').localeCompare(b.created_at||'')).map(a => ({
+      numero: a.ticket_number || '',
+      nombre: a.full_name || '',
+      tipo: tipoLabel[a.ticket_type] || a.ticket_type || 'Empresario',
+      platino: a.platino || '',
+      esmeralda: a.esmeralda || '',
+      diamante: a.diamante || '',
+      num_empresario: a.auspicio_numero || '',
+      fecha_auspicio: a.fecha_auspicio || '',
+      early_bird: a.early_bird ? 'Si' : 'No',
+      monto: a.amount || 0,
+      estado: a.payment_status || '',
+      entro: a.checked_in ? 'Si' : 'No',
+      veces: a.checked_in_count || 0,
+      th_scaneado: a.th_scanned ? 'Si' : 'No',
+      registrado: a.created_at || ''
     }))
   });
 });
+
 
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en ${BASE_URL} (puerto ${PORT})`);
