@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reporte de Boletos Vendidos</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; background: #f0f2f5; color: #333; }
+  .login-box { max-width: 360px; margin: 100px auto; background: #fff; padding: 36px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.12); text-align: center; }
+  .login-box h2 { margin-bottom: 8px; color: #1a1a2e; }
+  .login-box p { color: #666; font-size: 14px; margin-bottom: 24px; }
+  .login-box input { width: 100%; padding: 12px; border: 1.5px solid #ddd; border-radius: 8px; font-size: 16px; margin-bottom: 12px; outline: none; }
+  .login-box input:focus { border-color: #4f46e5; }
+  .login-box button { width: 100%; padding: 12px; background: #4f46e5; color: #fff; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+  .login-box button:hover { background: #4338ca; }
+  .error-msg { color: #dc2626; font-size: 14px; margin-top: 10px; }
+  #report { display: none; }
+  .header { background: #1a1a2e; color: #fff; padding: 18px 28px; display: flex; justify-content: space-between; align-items: center; }
+  .header h1 { font-size: 20px; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .header .fecha { font-size: 13px; opacity: .7; }
+  .btn-csv { background: #10b981; color: #fff; border: none; padding: 8px 18px; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; }
+  .btn-csv:hover { background: #059669; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px 16px; }
+  .stats { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+  .stat-card { background: #fff; border-radius: 10px; padding: 18px 24px; flex: 1; min-width: 140px; box-shadow: 0 2px 8px rgba(0,0,0,.07); text-align: center; }
+  .stat-card .num { font-size: 32px; font-weight: bold; color: #4f46e5; }
+  .stat-card .label { font-size: 13px; color: #666; margin-top: 4px; }
+  .section { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.07); margin-bottom: 20px; overflow: hidden; }
+  .section-header { background: #4f46e5; color: #fff; padding: 12px 20px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+  .section-header .count { background: rgba(255,255,255,.25); padding: 2px 10px; border-radius: 12px; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: #f8fafc; color: #555; font-size: 12px; text-transform: uppercase; padding: 10px 14px; text-align: left; border-bottom: 2px solid #e5e7eb; }
+  td { padding: 10px 14px; font-size: 14px; border-bottom: 1px solid #f0f0f0; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f8fafc; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: bold; }
+  .badge-si { background: #d1fae5; color: #065f46; }
+  .badge-no { background: #f3f4f6; color: #9ca3af; }
+  .readonly-notice { text-align: center; padding: 8px; background: #fef3c7; font-size: 12px; color: #92400e; }
+  @media (max-width: 600px) { th, td { font-size: 12px; padding: 8px; } }
+</style>
+</head>
+<body>
+
+<div class="login-box" id="loginBox">
+  <h2>&#128196; Reporte de Boletos</h2>
+  <p>Ingresa la contrasena para ver el informe</p>
+  <input type="password" id="passInput" placeholder="Contrasena" onkeydown="if(event.key==='Enter')doLogin()">
+  <button onclick="doLogin()">Ver Reporte</button>
+  <div class="error-msg" id="errMsg"></div>
+</div>
+
+<div id="report">
+  <div class="header">
+    <h1>&#128196; Reporte de Boletos Vendidos</h1>
+    <div class="header-right">
+      <span class="fecha" id="fechaGen"></span>
+      <button class="btn-csv" onclick="descargarCSV()">&#11015; Descargar CSV</button>
+    </div>
+  </div>
+  <div class="readonly-notice">Vista de solo lectura &mdash; No se puede modificar nada</div>
+  <div class="container">
+    <div class="stats" id="statsBox"></div>
+    <div id="tablesBox"></div>
+  </div>
+</div>
+
+<script>
+var _pass = '';
+var _data = null;
+
+function doLogin() {
+  var p = document.getElementById('passInput').value;
+  if (!p) return;
+  fetch('/api/reporte/data?pass=' + encodeURIComponent(p))
+    .then(function(r) {
+      if (r.status === 401) { document.getElementById('errMsg').innerText = 'Contrasena incorrecta'; return null; }
+      return r.json();
+    })
+    .then(function(d) {
+      if (!d) return;
+      _pass = p;
+      _data = d;
+      renderReport(d);
+    });
+}
+
+function renderReport(d) {
+  document.getElementById('loginBox').style.display = 'none';
+  document.getElementById('report').style.display = 'block';
+  document.getElementById('fechaGen').innerText = 'Generado: ' + d.generado;
+
+  // Stats
+  var tipos = {};
+  d.boletos.forEach(function(b) { tipos[b.tipo] = (tipos[b.tipo] || 0) + 1; });
+  var statsHtml = '<div class="stat-card"><div class="num">' + d.total + '</div><div class="label">Total vendidos</div></div>';
+  Object.keys(tipos).forEach(function(t) {
+    statsHtml += '<div class="stat-card"><div class="num">' + tipos[t] + '</div><div class="label">' + t + '</div></div>';
+  });
+  document.getElementById('statsBox').innerHTML = statsHtml;
+
+  // Group by leader
+  var leaders = {};
+  d.boletos.forEach(function(b) {
+    var l = b.lider || 'Sin lider';
+    if (!leaders[l]) leaders[l] = [];
+    leaders[l].push(b);
+  });
+
+  var sorted = Object.keys(leaders).sort(function(a,b) { return leaders[b].length - leaders[a].length; });
+  var html = '';
+  sorted.forEach(function(lider) {
+    var bols = leaders[lider];
+    html += '<div class="section"><div class="section-header">';
+    html += 'Lider: ' + lider;
+    html += '<span class="count">' + bols.length + ' boleto' + (bols.length !== 1 ? 's' : '') + '</span></div>';
+    html += '<table><thead><tr><th>#</th><th>Nombre</th><th>Email</th><th>Tipo</th><th>Fecha Reg.</th><th>T.Holder</th><th>Ingreso</th></tr></thead><tbody>';
+    bols.forEach(function(b) {
+      html += '<tr>';
+      html += '<td>' + b.numero + '</td>';
+      html += '<td>' + b.nombre + '</td>';
+      html += '<td>' + b.email + '</td>';
+      html += '<td>' + b.tipo + '</td>';
+      html += '<td>' + (b.fecha_registro || '-') + '</td>';
+      html += '<td><span class="badge ' + (b.ticket_holder === 'Si' ? 'badge-si' : 'badge-no') + '">' + b.ticket_holder + '</span></td>';
+      html += '<td><span class="badge ' + (b.ingreso_evento === 'Si' ? 'badge-si' : 'badge-no') + '">' + b.ingreso_evento + '</span></td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+  });
+  document.getElementById('tablesBox').innerHTML = html;
+}
+
+function descargarCSV() {
+  if (!_data) return;
+  var rows = [['Numero','Nombre','Email','Tipo','Lider','Fecha Registro','Ticket Holder','Ingreso Evento']];
+  _data.boletos.forEach(function(b) {
+    rows.push([b.numero, b.nombre, b.email, b.tipo, b.lider, b.fecha_registro || '', b.ticket_holder, b.ingreso_evento]);
+  });
+  var csv = rows.map(function(r) { return r.map(function(v) { return '"' + String(v || '').replace(/"/g, '""') + '"'; }).join(','); }).join('\n');
+  var blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'reporte-boletos.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
